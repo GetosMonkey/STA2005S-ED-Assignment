@@ -1,0 +1,19 @@
+# Ignore the massive data files
+EDproject_2.0.zip/
+.Rhistory
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Standard Python ignores
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+
+# IDE files
+.vscode/
+.idea/

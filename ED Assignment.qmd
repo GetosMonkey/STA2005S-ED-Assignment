@@ -1,0 +1,26 @@
+---
+title: "ED Assignment"
+author: "Maryam Abrahams and Bheka Mabika"
+format: html
+editor: visual
+---
+
+```{r}
+# Imports and Setup
+
+# install.packages("EDproject_2.0.zip", repos = NULL, type = "win.binary")
+
+library(EDproject)
+set.seed(22) 
+
+design <- read.csv("design.csv")
+design
+
+mydata <- get.observations(design)
+mydata
+
+```
+
+```{r}
+
+```
