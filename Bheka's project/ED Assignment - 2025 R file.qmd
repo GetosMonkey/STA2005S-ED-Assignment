@@ -1,0 +1,220 @@
+---
+title: "ED_Assignment_Bheka_&_Maryam"
+format: html
+editor: visual
+---
+
+## Simulate observations
+
+```{r}
+
+
+
+# Step 1: Check your working directory
+getwd()           
+
+# Step 2: Set wd
+
+setwd("C:/Users/Bheka Mabika/Documents/#ED_Assignment")
+
+
+# Step 3: Install the package
+
+# For Windows users:
+install.packages("EDproject_2.0.zip", repos = NULL, type = "win.binary")
+
+# -----------------------------
+# 3. LOAD THE PACKAGE
+# -----------------------------
+library(EDproject)
+
+# -----------------------------
+# 4. READ YOUR DESIGN FILE
+# -----------------------------
+
+
+design <- read.csv("Fulldesign.csv")
+
+
+
+head(design)    # Quick preview
+
+# -----------------------------
+# 5. SIMULATE OBSERVATIONS
+# -----------------------------
+# This ensures results are reproducible
+set.seed(1234)
+
+# Generate simulated data
+mydata <- get.observations(design)
+
+# View the first few rows
+head(mydata)
+str(mydata)
+
+# -----------------------------
+# 6. SAVE THE SIMULATED DATA
+# -----------------------------
+write.csv(mydata, "observations.csv", row.names = FALSE)
+
+
+```
+
+## Fit the model(s) and check assumptions
+
+```{r}
+
+# Convert variables to factors ---------------------------------------------
+mydata$season     <- factor(mydata$season)
+mydata$greenhouse <- factor(mydata$greenhouse)
+mydata$heat       <- factor(mydata$heat)
+mydata$light      <- factor(mydata$light)
+mydata$variety    <- factor(mydata$variety)
+mydata$side       <- factor(mydata$side)
+
+# Create one blocking factor (season × greenhouse)
+mydata$block <- interaction(mydata$season, mydata$greenhouse, drop = TRUE)
+
+# Fit the linear model -----------------------------------------------------
+fit <- lm(obs ~ block + heat*light*variety + side, data = mydata)
+
+
+# View model summary -------------------------------------------------------
+summary(fit)
+
+# ANOVA table --------------------------------------------------------------
+# Sequential (Type I) ANOVA
+anova(fit)
+
+# Type II ANOVA (recommended when interpreting main effects)
+library(car)
+Anova(fit, type = 2)
+
+# Check residual assumptions -----------------------------------------------
+par(mfrow = c(1,1))  # reset layout
+plot(fit, which = 1)  # Residuals vs Fitted
+plot(fit, which = 2)  # Normal Q–Q
+plot(fit, which = 3)  # Scale–Location
+plot(fit, which = 5)  # Residuals vs Leverage
+
+
+```
+
+```{r}
+#The plot below compures and plots estimated marginal means to support our conclusions:
+
+#mydata_complete <- na.omit(mydata)
+#fit <- lm(obs ~ block + heat*light*variety + side, data = mydata_complete)
+#emm <- emmeans(fit, ~ heat + light + variety)
+#plot(emm)
+
+
+```
+
+## Visualise effects (tell the story)
+
+```{r}
+
+# ---- Interaction plots (base R) ----
+dat <- na.omit(mydata)  # drop the two NA rows
+
+# quality vs LIGHT by HEAT (all varieties pooled)
+interaction.plot(x.factor = dat$light, trace.factor = dat$heat, response = dat$obs,
+                 fun = mean, type = "b", pch = 19,
+                 xlab = "Light level", ylab = "Mean quality",
+                 legend = TRUE, trace.label = "Heat")
+
+# quality vs HEAT by LIGHT (all varieties pooled)
+interaction.plot(x.factor = dat$heat, trace.factor = dat$light, response = dat$obs,
+                 fun = mean, type = "b", pch = 19,
+                 xlab = "Heat level", ylab = "Mean quality",
+                 legend = TRUE, trace.label = "Light")
+
+# ---- By variety (two side-by-side panels) ----
+par(mfrow = c(1,2))
+with(subset(dat, variety == "R"),
+     interaction.plot(light, heat, obs, fun = mean, type = "b", pch = 19,
+                      xlab = "Light level", ylab = "Mean quality (Variety R)",
+                      legend = TRUE, trace.label = "Heat"))
+with(subset(dat, variety == "F"),
+     interaction.plot(light, heat, obs, fun = mean, type = "b", pch = 19,
+                      xlab = "Light level", ylab = "Mean quality (Variety F)",
+                      legend = TRUE, trace.label = "Heat"))
+par(mfrow = c(1,1))
+
+```
+
+```{r}
+##Mean Plots
+
+# ================================================================
+#  Mean plots with 95% confidence intervals using ggplot2
+# ================================================================
+
+library(dplyr)
+library(ggplot2)
+
+# Drop missing obs
+dat <- na.omit(mydata)
+
+# Ensure all are factors
+dat <- dat %>%
+  mutate(
+    heat = factor(heat),
+    light = factor(light),
+    variety = factor(variety)
+  )
+
+# Summarise mean, SD, SE, and CI
+sumdat <- dat %>%
+  group_by(light, heat, variety) %>%
+  summarise(
+    n = n(),
+    mean = mean(obs),
+    sd = sd(obs),
+    se = sd / sqrt(n),
+    ci = 1.96 * se,  # 95% confidence interval
+    .groups = "drop"
+  )
+
+# ================================================================
+#  1️⃣ Mean quality by Light (lines = Heat), faceted by Variety
+# ================================================================
+ggplot(sumdat, aes(x = light, y = mean, group = heat,
+                   linetype = heat, shape = heat)) +
+  geom_line() +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymin = mean - ci, ymax = mean + ci), width = 0.15) +
+  facet_wrap(~ variety) +
+  labs(title = "Mean quality by Light (lines = Heat), faceted by Variety",
+       x = "Light level", y = "Mean quality", linetype = "Heat", shape = "Heat") +
+  theme_minimal(base_size = 12)
+
+# ================================================================
+#  2️⃣ Mean quality by Heat (lines = Light), faceted by Variety
+# ================================================================
+ggplot(sumdat, aes(x = heat, y = mean, group = light,
+                   linetype = light, shape = light)) +
+  geom_line() +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymin = mean - ci, ymax = mean + ci), width = 0.15) +
+  facet_wrap(~ variety) +
+  labs(title = "Mean quality by Heat (lines = Light), faceted by Variety",
+       x = "Heat level", y = "Mean quality", linetype = "Light", shape = "Light") +
+  theme_minimal(base_size = 12)
+
+# ================================================================
+#  3️⃣ Mean quality by Light (lines = Heat; colour = Variety)
+# ================================================================
+ggplot(sumdat, aes(x = light, y = mean, group = interaction(heat, variety),
+                   linetype = heat, shape = heat, colour = variety)) +
+  geom_line() +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymin = mean - ci, ymax = mean + ci), width = 0.15) +
+  labs(title = "Mean quality by Light (lines = Heat; colour = Variety)",
+       x = "Light level", y = "Mean quality",
+       linetype = "Heat", shape = "Heat", colour = "Variety") +
+  theme_minimal(base_size = 12)
+
+
+```
