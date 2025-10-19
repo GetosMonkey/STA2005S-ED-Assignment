@@ -1,17 +1,126 @@
 ---
-title: "ED Assignment"
-author: "Maryam Abrahams and Bheka Mabika"
-format: html
+title: "Experimental Design Project"
+subtitle: "Final Report"
+author: 
+  - "Maryam Abrahams (ABRMAR043)"
+  - "Bheka Mabika (MBKBHE002)"
+date: today
+format:
+  pdf:
+    toc: true
+    number-sections: true
+    fig-cap-location: top
+    mainfont: "Helvetica"
+    sansfont: "Helvetica"
+    fontsize: 11pt
+    linestretch: 1.25
+    geometry:
+      - margin=1in
+    code-line-numbers: false
+    code-block-bg: "#F5F5F5"
+    code-block-border-left: "#007ACC"
+    highlight-style: breeze
+    keep-tex: false
+    header-includes:
+      - \usepackage{xcolor}
+      - \definecolor{navy}{HTML}{0B1D39}
+      - \definecolor{bodygrey}{HTML}{333333}
+      - \definecolor{midgrey}{HTML}{666666}
+      - \definecolor{accentblue}{HTML}{007ACC}
+      - \definecolor{accentgreen}{HTML}{1DB954}
+      - \definecolor{accentcoral}{HTML}{FF6F61}
+      - \color{bodygrey}
+      - \usepackage{titlesec}
+      - \titleformat{\section}{\Large\bfseries\color{navy}}{\thesection}{1em}{}
+      - \titleformat{\subsection}{\large\bfseries\color{accentblue}}{\thesubsection}{1em}{}
+      - \usepackage{fancyhdr}
+      - \pagestyle{fancy}
+      - \fancyhead[L]{\textcolor{navy}{Experimental Design Project}}
+      - \fancyhead[R]{\textcolor{accentblue}{Group ABRMAR043–MBKBHE002}}
+      - \fancyfoot[C]{\thepage}
 editor: visual
 ---
 
-```{r}
-# Imports and Setup
+# Experimental Design: 
+
+## Imports and Setup: 
+
+```{r, echo=TRUE, eval=TRUE, include=FALSE}
+
+# Imports, libraries, and setup 
+
+#| results: hide
+#| warning: false
+#| echo: false
 
 # install.packages("EDproject_2.0.zip", repos = NULL, type = "win.binary")
 
 library(EDproject)
-set.seed(22) 
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(EDproject)
+
+# Making a color Palette for my document: 
+col_palette = c (
+  "#0B1D39", 
+  "#333333",
+  "#666666",
+  "#D3D3D3",
+  "#f8f8f8", 
+  "#F5F5F5",
+  "#007ACC",
+  "#1DB954",
+  "#FF6F61",
+  "#f9c74f"
+  
+)
+```
+
+## Simulating data:
+
+Creating the design matrix in accordance t
+```{r}
+set.seed(22)
+
+# Treatment combinations: 
+treatments <- expand.grid(
+              light = c(1, 2, 3, 4),
+              heat = c(1, 2, 3, 4),
+              variety = c("R", "F")
+)
+
+# Per season split plots: 
+plots_s1 <- expand.grid(
+              greenhouse = c("A", "B"),
+              side = c("n", "s"), 
+              plot_id_in_bock = 1:8
+)
+plots_s1$season <- 1
+treatments_s1 <- treatments[sample(nrow(treatments)), ]
+design_s1 <- cbind(plots_s1, treatments_s1)
+  
+plots_s2 <- expand.grid(
+              greenhouse = c("A", "B"),
+              side = c("n", "s"), 
+              plot_id_in_bock = 1:8
+)
+plots_s2$season <- 2
+treatments_s2 <- treatments[sample(nrow(treatments)), ]
+design_s2 <- cbind(plots_s2, treatments_s2)
+
+# Final design matrix: 
+final_design <- rbind(design_s1, design_s2)
+final_design$plot <- 1:nrow(final_design)
+
+design_csv <- final_design[c("season", "greenhouse", "light", "heat", "variety", "side", "plot")]
+
+write.csv(design_csv, "design.csv", row.names = FALSE, quote = FALSE)
+
+```
+
+## Obtaining observations: 
+```{r}
 
 design <- read.csv("design.csv")
 design
@@ -21,6 +130,19 @@ mydata
 
 ```
 
+## Design motivation: 
 ```{r}
-
 ```
+
+## Randomization: 
+```{r}
+```
+
+# Analysis and Results: 
+
+## Conclusion: 
+
+# Future Reccomendations: 
+
+
+
