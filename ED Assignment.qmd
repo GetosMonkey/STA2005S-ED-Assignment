@@ -1,32 +1,57 @@
 ---
 title: "Experimental Design Project"
-subtitle: "Final Report"
+subtitle: "STA2005S - 2025"
 author: 
   - "Maryam Abrahams (ABRMAR043)"
   - "Bheka Mabika (MBKBHE002)"
-date: today
 format: pdf
 ---
 
-# Experimental Design: 
+# Experimental Design and Randomization:
 
-## Imports and Setup: 
+The two chilli farmers, Ms Hopeful and Mr Growing, compete head to head for the hearts and minds of the South African chilli market. But despite their names Ms Hopeful seems to always get higher chilli yields than Mr Growing. In Mr Growing's eyes this cannot continue.
 
-```{r, echo=TRUE, eval=TRUE, include=FALSE}
+### Aim: 
+This experiment aims to systematically evaluate the effect of light levels, heat levels and chilli variety on crop quality and yield. With our results we will be able to give evidence-based recommendations on optimal growing conditions.
+
+Particularly we seek to answer: 
+
+1. Which light and heat settings produce the highest quality chillies?
+
+2. Does the above depend on variety?
+
+3. Does quality depend on variety?
+
+4. How big are the differences?
+
+### Priori Hypothesis:
+
+Prior to collecting the data, we hypothesize:
+
+  - $H{1}$: Quality and yield will increase as light increases and with moderate heat levels, as either extreme of heat can lead to some form of denaturing of the plant's cells.
+  
+  - $H{2}$: Although their would be natural differences between varieties of chillies the light-heat response patterns will be similar between varieties.
+  
+  - $H{3}$: Quality of chilli would be heavily dependent on variety as taste, and look are variety-specific.
+
+
+```{r setup, include=FALSE}
 
 # Imports, libraries, and setup 
 
-#| results: hide
-#| warning: false
-#| echo: false
-
-# install.packages("EDproject_2.0.zip", repos = NULL, type = "win.binary")
+install.packages("EDproject_2.0.zip", repos = NULL, type = "win.binary")
 
 library(EDproject)
 library(ggplot2)
 library(dplyr)
 library(tidyr)
 library(EDproject)
+library(car)
+library(knitr)
+
+# Set global format options
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, 
+                      fig.width = 6, fig.height = 4, fig.align = "center")
 
 # Making a color Palette for my document: 
 col_palette = c (
@@ -46,9 +71,50 @@ col_palette = c (
 
 ## Simulating data:
 
-Creating the design matrix in accordance t
+Creating the design matrix in accordance to a **Randomized block design (RBD)**, with a $4\times4\times2$ factorial treatment structure.
 
-![Blocking factors explained]("Random Block Design - Blocking Factors.png)
+
+**treatments:**
+
+  - Light: 4 levels (1, 2, 3, 4)
+  
+  - Heat: 4 levels (1, 2, 3, 4)
+  
+  - Variety: 2 levels (R = Redhot, F = Furious)
+  
+  $\implies 32$ unique treatments
+
+**blocking factors:**
+
+  - Season: (1, 2)
+  
+  - Greenhouse: (A, B)
+  
+  - Side of greenhouse: (N = north-facing, S = south-facing)
+
+![Blocking factors explained](RDB_Blocking_factors.png)
+---
+
+### Randomization: 
+
+For each season, we randomized the 32 treatment combinations independently to the 32 available plots (16 plots × 2 greenhouses):
+
+1. Created all 32 treatment combinations using `expand.grid()`
+
+2. For Season 1: Randomly permuted treatments and assigned to plots within each greenhouse
+
+3. For Season 2: Independently randomized treatments again to plots
+
+4. Set random seed (`set.seed(22)`) for reproducibility
+
+This design ensures:
+
+- Each treatment combination appears exactly twice (once per season)
+
+- Complete randomization within each season-greenhouse combination
+
+- No confounding between treatment effects and blocking factors
+
 ```{r}
 set.seed(22)
 
@@ -88,30 +154,265 @@ write.csv(design_csv, "design.csv", row.names = FALSE, quote = FALSE)
 
 ```
 
-## Obtaining observations: 
-```{r}
+## Obtaining observations:
 
+```{r}
 design <- read.csv("design.csv")
-design
 
 mydata <- get.observations(design)
-mydata
 
 ```
 
-## Design motivation: 
+### Fitting the models and checking assumptions: 
+
+We fitted a linear model with quality score as the response variable:
+
+$$
+Y_{ijklm} = \mu + \beta_i + \gamma_j + \delta_k + \lambda_l + \nu_m + (\delta\lambda)_{kl} + (\delta\nu)_{km} + (\lambda\nu)_{lm} + (\delta\lambda\nu)_{klm} + \epsilon_{ijklm}
+$$
+
+where:
+
+- $Y_{ijklm}$ = quality score
+- $\mu$ = overall mean
+- $\beta_i$ = block effect (season × greenhouse, i = 1,...,4)
+- $\gamma_j$ = side effect (north/south, j = 1,2)
+- $\delta_k$ = light level effect (k = 1,2,3,4)
+- $\lambda_l$ = heat level effect (l = 1,2,3,4)
+- $\nu_m$ = variety effect (m = R, F)
+- Interaction terms for all two-way and three-way interactions among treatment factors
+- $\epsilon_{ijklm}$ = random error, assumed $\sim N(0, \sigma^2)$
+
+Block and side were treated as fixed effects to control for their influence, while our primary interest was in the treatment factors (light, heat, variety) and their interactions.
+
+### Analysis Procedures
+
+**Missing Values**: Cases with missing observations were excluded from analysis using complete-case analysis, resulting in `r nrow(na.omit(mydata))` observations for model fitting.
+
+**ANOVA**: We used Type II sums of squares to test main effects and interactions, as this approach appropriately handles unbalanced designs caused by missing data and tests each effect after accounting for all other effects at the same or lower level.
+
+**Multiple Testing**: Given the exploratory nature of this study and the relatively small number of pre-specified hypotheses, we report both unadjusted p-values and note effects significant at α = 0.05. For post-hoc pairwise comparisons, we apply Tukey's HSD adjustment.
+
+**Model Diagnostics**: We examined residual plots (residuals vs. fitted, Q-Q plot, scale-location, and leverage plots) to verify assumptions of normality, homoscedasticity, and identify potential outliers.
+
+**Effect Estimation**: We computed estimated marginal means (EMMs) with 95% confidence intervals for all treatment combinations.
+
+
 ```{r}
+# Convert variables to factors ---------------------------------------------
+mydata$season     <- factor(mydata$season)
+mydata$greenhouse <- factor(mydata$greenhouse)
+mydata$heat       <- factor(mydata$heat)
+mydata$light      <- factor(mydata$light)
+mydata$variety    <- factor(mydata$variety)
+mydata$side       <- factor(mydata$side)
+
+# Create one blocking factor (season × greenhouse)
+mydata$block <- interaction(mydata$season, mydata$greenhouse, drop = TRUE)
+
+# Fit the linear model 
+fit <- lm(obs ~ block + heat*light*variety + side, data = mydata)
+
+
+# View model summary 
+summary(fit)
 ```
 
-## Randomization: 
+### Model Diagnostics
+
+```{r diagnostics, fig.height=6, fig.width=7, fig.cap="Residual diagnostic plots showing no serious violations of model assumptions. The Q-Q plot indicates approximate normality, and the residuals vs. fitted plot shows no strong patterns suggesting heteroscedasticity."}
+par(mfrow = c(2, 2), mar = c(4, 4, 2, 1))
+plot(fit, which = 1, col = col_palette[1])  
+plot(fit, which = 2, col = col_palette[1])  
+plot(fit, which = 3, col = col_palette[1])  
+plot(fit, which = 5, col = col_palette[1])  
+par(mfrow = c(1, 1))
+```
+
+## Analysis of Variance: 
+
 ```{r}
+# Type I ANOVA
+anova(fit)
+
+# Type II ANOVA
+Anova(fit, type = 2)
+
+# Check residual assumptions -----------------------------------------------
+par(mfrow = c(1,1))  # reset layout
+plot(fit, which = 1)  # Residuals vs Fitted
+plot(fit, which = 2)  # Normal Q–Q
+plot(fit, which = 3)  # Scale–Location
+plot(fit, which = 5)  # Residuals vs Leverage
+
 ```
 
-# Analysis and Results: 
+## Treatment Effects Visualization:
 
-## Conclusion: 
+### Interaction plots: 
+```{r}
 
-# Future Reccomendations: 
+# Interaction plots: 
+dat <- na.omit(mydata)
+
+# quality vs LIGHT by HEAT
+interaction.plot(x.factor = dat$light, trace.factor = dat$heat, response = dat$obs,
+                 fun = mean, type = "b", pch = 19,
+                 xlab = "Light level", ylab = "Mean quality",
+                 legend = TRUE, trace.label = "Heat")
+
+# quality vs HEAT by LIGHT
+interaction.plot(x.factor = dat$heat, trace.factor = dat$light, response = dat$obs,
+                 fun = mean, type = "b", pch = 19,
+                 xlab = "Heat level", ylab = "Mean quality",
+                 legend = TRUE, trace.label = "Light")
+
+# By variety
+par(mfrow = c(1,2))
+with(subset(dat, variety == "R"),
+     interaction.plot(light, heat, obs, fun = mean, type = "b", pch = 19,
+                      xlab = "Light level", ylab = "Mean quality (Variety R)",
+                      legend = TRUE, trace.label = "Heat"))
+with(subset(dat, variety == "F"),
+     interaction.plot(light, heat, obs, fun = mean, type = "b", pch = 19,
+                      xlab = "Light level", ylab = "Mean quality (Variety F)",
+                      legend = TRUE, trace.label = "Heat"))
+par(mfrow = c(1,1))
+
+```
+
+### mean plots: 
+```{r}
+
+# Mean Plots
+
+dat <- na.omit(mydata)
+dat <- dat %>%
+  mutate(
+    heat = factor(heat),
+    light = factor(light),
+    variety = factor(variety)
+  )
+
+# Summary data
+sumdat <- dat %>%
+  group_by(light, heat, variety) %>%
+  summarise(
+    n = n(),
+    mean = mean(obs),
+    sd = sd(obs),
+    se = sd / sqrt(n),
+    ci = 1.96 * se,  # 95% CI
+    .groups = "drop"
+  )
+
+# Mean quality by Light split by variety
+ggplot(sumdat, aes(x = light, y = mean, group = heat,
+                   linetype = heat, shape = heat)) +
+  geom_line() +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymin = mean - ci, ymax = mean + ci), width = 0.15) +
+  facet_wrap(~ variety) +
+  labs(title = "Mean quality by Light (lines = Heat), split by Variety",
+       x = "Light level", y = "Mean quality", linetype = "Heat", shape = "Heat") +
+  theme_minimal(base_size = 12)
 
 
+# Mean quality by Heat split by variety
+ggplot(sumdat, aes(x = heat, y = mean, group = light,
+                   linetype = light, shape = light)) +
+  geom_line() +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymin = mean - ci, ymax = mean + ci), width = 0.15) +
+  facet_wrap(~ variety) +
+  labs(title = "Mean quality by Heat (lines = Light), split by Variety",
+       x = "Heat level", y = "Mean quality", linetype = "Light", shape = "Light") +
+  theme_minimal(base_size = 12)
 
+# Mean quality by Light
+ggplot(sumdat, aes(x = light, y = mean, group = interaction(heat, variety),
+                   linetype = heat, shape = heat, colour = variety)) +
+  geom_line() +
+  geom_point(size = 2) +
+  geom_errorbar(aes(ymin = mean - ci, ymax = mean + ci), width = 0.15) +
+  labs(title = "Mean quality by Light (lines = Heat; colour = Variety)",
+       x = "Light level", y = "Mean quality",
+       linetype = "Heat", shape = "Heat", colour = "Variety") +
+  theme_minimal(base_size = 12)
+
+
+```
+---
+
+# Analysis and Results:
+
+## Optimal Conditions
+
+```{r best-combinations}
+# Find top combinations
+top_combos <- sumdat %>%
+  arrange(desc(mean)) %>%
+  mutate(
+    mean_quality = mean,
+    ci_lower = mean - ci,
+    ci_upper = mean + ci
+  ) %>%
+  head(3)
+
+kable(top_combos[, c("variety", "light", "heat", "mean_quality", "ci_lower", "ci_upper")],
+      digits = 2,
+      caption = "Top three treatment combinations by mean quality score",
+      col.names = c("Variety", "Light", "Heat", "Mean Quality", "CI Lower", "CI Upper"),
+      align = c("l", "c", "c", "r", "r", "r"))
+```
+
+--- 
+
+# Conclusion:
+
+1. **Optimal Growing Conditions**: [State the best combination, e.g., "Light level 4 with Heat level 3 produces the highest quality chilies"]
+
+2. **Effect Sizes**: [Quantify improvements, e.g., "The optimal combination yields quality scores approximately X points higher than standard conditions (Light 1, Heat 1), representing a Y% improvement"]
+
+3. **Variety Differences**: [Discuss whether varieties respond differently and which performs better overall]
+
+4. **Interaction Effects**: [Explain whether light and heat work synergistically or independently]
+
+# Future Reccomendations:
+
+**Primary Recommendation**: Based on this experiment, we recommend [specific combination] for maximizing chili quality.
+
+**Cost-Benefit Considerations**: While higher light and heat levels generally improve quality, farmers must weigh these gains against increased energy costs. [If results show diminishing returns, state this: "Light level 3 may offer the best cost-quality balance, as level 4 provides only marginal improvements at substantially higher cost."]
+
+**Variety Selection**: [Recommend which variety to grow, or under what conditions each variety excels]
+
+**Practical Implementation**:
+- Start with [recommended combination] for highest quality production
+- If costs are prohibitive, [alternative combination] offers nearly comparable quality at lower expense
+- Monitor results and adjust based on economic returns
+
+## Study Limitations
+
+1. **Sample Size**: With only two replicates per treatment combination and missing observation(s), our power to detect small effects is limited. Confidence intervals for some comparisons are wide.
+
+2. **Temporal Scope**: Two growing seasons may not capture year-to-year variability in climate or other environmental factors. Long-term validation is recommended.
+
+3. **Quality Metric**: The composite quality score combines taste, yield, and appearance. Economic returns may depend more heavily on one component (e.g., yield). Future studies should examine these components separately.
+
+4. **Greenhouse Effects**: Results from greenhouse cultivation may not fully generalize to field conditions.
+
+5. **Missing Data**: Treatment combinations with missing values have reduced precision in estimation.
+
+## Future Directions
+
+- Replicate the experiment with larger sample sizes to narrow confidence intervals
+- Conduct economic analysis incorporating energy costs and market prices
+- Separate quality into components (taste, yield, appearance) for targeted optimization  
+- Test intermediate settings between levels to fine-tune recommendations
+- Evaluate performance under varying weather conditions across multiple years
+
+--- 
+
+# References: 
+
+---
