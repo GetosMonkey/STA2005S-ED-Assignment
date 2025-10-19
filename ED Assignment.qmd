@@ -5,40 +5,7 @@ author:
   - "Maryam Abrahams (ABRMAR043)"
   - "Bheka Mabika (MBKBHE002)"
 date: today
-format:
-  pdf:
-    toc: true
-    number-sections: true
-    fig-cap-location: top
-    mainfont: "Helvetica"
-    sansfont: "Helvetica"
-    fontsize: 11pt
-    linestretch: 1.25
-    geometry:
-      - margin=1in
-    code-line-numbers: false
-    code-block-bg: "#F5F5F5"
-    code-block-border-left: "#007ACC"
-    highlight-style: breeze
-    keep-tex: false
-    header-includes:
-      - \usepackage{xcolor}
-      - \definecolor{navy}{HTML}{0B1D39}
-      - \definecolor{bodygrey}{HTML}{333333}
-      - \definecolor{midgrey}{HTML}{666666}
-      - \definecolor{accentblue}{HTML}{007ACC}
-      - \definecolor{accentgreen}{HTML}{1DB954}
-      - \definecolor{accentcoral}{HTML}{FF6F61}
-      - \color{bodygrey}
-      - \usepackage{titlesec}
-      - \titleformat{\section}{\Large\bfseries\color{navy}}{\thesection}{1em}{}
-      - \titleformat{\subsection}{\large\bfseries\color{accentblue}}{\thesubsection}{1em}{}
-      - \usepackage{fancyhdr}
-      - \pagestyle{fancy}
-      - \fancyhead[L]{\textcolor{navy}{Experimental Design Project}}
-      - \fancyhead[R]{\textcolor{accentblue}{Group ABRMAR043–MBKBHE002}}
-      - \fancyfoot[C]{\thepage}
-editor: visual
+format: pdf
 ---
 
 # Experimental Design: 
@@ -80,6 +47,8 @@ col_palette = c (
 ## Simulating data:
 
 Creating the design matrix in accordance t
+
+![Blocking factors explained]("Random Block Design - Blocking Factors.png)
 ```{r}
 set.seed(22)
 
