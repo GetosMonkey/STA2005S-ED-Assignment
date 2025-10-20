@@ -71,18 +71,15 @@ col_palette = c (
 
 ## Simulating data:
 
-Creating the design matrix in accordance to a **Randomized block design (RBD)**, with a $4\times4\times2$ factorial treatment structure.
+We created the design matrix in accordance to a **Nested Latin Square design**, similar to a factorial design, however since we lack the resources needed to experiment on every possible combination, instead we pick combinations all necessary combinations needed to represent the effects of the different light and heat levels on the chillies.
 
-
-**treatments:**
+**treatment factors:**
 
   - Light: 4 levels (1, 2, 3, 4)
   
   - Heat: 4 levels (1, 2, 3, 4)
   
-  - Variety: 2 levels (R = Redhot, F = Furious)
-  
-  $\implies 32$ unique treatments
+  $\implies 16$ unique treatments
 
 **blocking factors:**
 
@@ -91,8 +88,25 @@ Creating the design matrix in accordance to a **Randomized block design (RBD)**,
   - Greenhouse: (A, B)
   
   - Side of greenhouse: (N = north-facing, S = south-facing)
+  
+  - Chilli variety: (R = red-hot, F = furious)
 
-![Blocking factors explained](RDB_Blocking_factors.png)
+![Blocking factors Diagram](Example_setup.png)
+
+**Design:** 
+
+Within our design we have an outer $2\times2$ latin square design, creating a 4 outer blocks seperating the 4 possible combinations of the 2 greenhouses (A & B) and the 2 seasons.
+Each of these represents a separate experimental block.
+
+Inside each block, there is an inner $2\times2$ latin square layer, creating a 4 block grid of each of the 4 possible combinations of the side-facing of the greenhouse (N & S) and variety of chilli. 
+
+Then, within each side-variety combination, we assign random heat and light levels such that there every heat and light level, of which there are both 4, is tested every possible side-variety combination block, from the 16 available plots in each greenhouse-season outer block combination.
+
+This means the structure is such that: 
+  Heat-Light is nested within Side-variety which are is nested Season-greenhouse combinations.
+
+![Blocking factors Diagram](Blocking_factors_pic.png)
+
 ---
 
 ### Randomization: 
@@ -118,38 +132,100 @@ This design ensures:
 ```{r}
 set.seed(22)
 
-# Treatment combinations: 
-treatments <- expand.grid(
-              light = c(1, 2, 3, 4),
-              heat = c(1, 2, 3, 4),
-              variety = c("R", "F")
+# Outer Latin Square: Determines outer block position
+outer_latin_square <- data.frame(
+              season = c(1, 1, 2, 2),
+              greenhouse = c("A", "B", "A", "B"),
+              outer_block = c(1, 2, 3, 4)
 )
 
-# Per season split plots: 
-plots_s1 <- expand.grid(
-              greenhouse = c("A", "B"),
-              side = c("n", "s"), 
-              plot_id_in_bock = 1:8
-)
-plots_s1$season <- 1
-treatments_s1 <- treatments[sample(nrow(treatments)), ]
-design_s1 <- cbind(plots_s1, treatments_s1)
+# Assigning heat and light levels balanced
+create_nested_ls <- function(block_id) {
   
-plots_s2 <- expand.grid(
-              greenhouse = c("A", "B"),
-              side = c("n", "s"), 
-              plot_id_in_bock = 1:8
-)
-plots_s2$season <- 2
-treatments_s2 <- treatments[sample(nrow(treatments)), ]
-design_s2 <- cbind(plots_s2, treatments_s2)
+  # 4 side-variety combos
+  side_var_combos <- expand.grid(
+    side = c("n", "s"), 
+    variety = c("R", "F")
+  )
 
-# Final design matrix: 
-final_design <- rbind(design_s1, design_s2)
+  design <- data.frame()
+  
+  for (i in 1:nrow(side_var_combos)) {
+    heat_order <- sample(1:4)
+    light_order <- sample(1:4)
+    combo_design <- data.frame(
+      side = rep(side_var_combos$side[i], 4),
+      variety = rep(side_var_combos$variety[i], 4),
+      heat = heat_order,
+      light = light_order
+    )
+    
+    design <- rbind(design, combo_design)
+  }
+  
+  return(design)
+}
+
+# Generating the design for all 4 outer blocks
+all_designs <- list()
+
+for (i in 1:nrow(outer_latin_square)){
+  block_design <- create_nested_ls()
+  block_design$season <- outer_latin_square$season[i]
+  block_design$greenhouse <- outer_latin_square$greenhouse[i]
+  block_design$outer_block <- outer_latin_square$outer_block[i]
+  all_designs[[i]] <- block_design
+}
+
+# Combining blocks
+final_design <- do.call(rbind, all_designs)
 final_design$plot <- 1:nrow(final_design)
 
 design_csv <- final_design[c("season", "greenhouse", "light", "heat", "variety", "side", "plot")]
+```
 
+```{r}
+
+cat("--- Design Validation Check ---\n\n")
+
+# Get all unique combinations of season and greenhouse
+all_main_blocks <- unique(design_csv[, c("season", "greenhouse")])
+
+# Loop through each unique season/greenhouse combination
+for (i in 1:nrow(all_main_blocks)) {
+  
+  # Get the current season and greenhouse
+  s <- all_main_blocks$season[i]
+  gh <- all_main_blocks$greenhouse[i]
+  
+  # Print a "pretty block" header
+  cat(paste("========================================\n"))
+  cat(paste("    Checking Season:", s, "| Greenhouse:", gh, " \n"))
+  cat(paste("========================================\n"))
+  
+  # Subset the data for this specific main block
+  current_block_data <- subset(design_csv, season == s & greenhouse == gh)
+  
+  # Get the unique side-variety combinations within this block (e.g., "n F", "n R", ...)
+  side_variety_combos <- sort(unique(paste(current_block_data$side, current_block_data$variety)))
+  
+  # Loop through each side-variety sub-block
+  for (sv in side_variety_combos) {
+    cat("\n  Sub-block (Side / Variety):", sv, "\n")
+    
+    # Get the data for the specific sub-block
+    subset_data <- current_block_data[paste(current_block_data$side, current_block_data$variety) == sv, ]
+    
+    # Check the heat and light levels present in these plots
+    cat("    > Heat levels present: ", paste(sort(unique(subset_data$heat)), collapse=", "), "\n")
+    cat("    > Light levels present:", paste(sort(unique(subset_data$light)), collapse=", "), "\n")
+  }
+  cat("\n") # Add a final newline for spacing
+}
+
+cat("--- Validation Complete ---\n")
+
+# Write file
 write.csv(design_csv, "design.csv", row.names = FALSE, quote = FALSE)
 
 ```
@@ -161,6 +237,7 @@ design <- read.csv("design.csv")
 
 mydata <- get.observations(design)
 
+mydata
 ```
 
 ### Fitting the models and checking assumptions: 
