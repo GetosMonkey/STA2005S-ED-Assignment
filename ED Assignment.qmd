@@ -1,5 +1,5 @@
 ---
-title: " 📊 Experimental Design Project 📊"
+title: " 📊 Experimental Design Project"
 subtitle: "STA2005S - 2025"
 author: 
   - "Maryam Abrahams (ABRMAR043)"
@@ -54,6 +54,7 @@ library(tidyr)
 library(EDproject)
 library(car)
 library(knitr)
+library(emmeans)
 
 # Set global format options
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, 
@@ -126,7 +127,7 @@ These 16 Heat–Light combinations were **randomised independently** within each
 
 The overarching structure is thus such that: Heat-Light is nested within Side-variety which are is nested Season-greenhouse combinations.
 
-![Blocking factors Diagram](Blocking_factors_pic.png){width=60%}
+![Blocking factors Diagram](Blocking_factors_pic.png){width=70%}
 
 
 ### Randomization:
@@ -137,8 +138,9 @@ In this way there is confounding of higher order combinations but this is due to
 
 ### Simulation: 
 
-
 The simulated quality data was generated using the **`get.observations()`** function with a fixed random seed (**`set.seed(22)`**) to ensure reproducibility.
+
+The generated design matrix was also validated with a loop which checks for correct randomization and that each heat-light combination is used once per side-variety combination.
 
 ------------------------------------------------------------------------
 
@@ -197,7 +199,7 @@ final_design$plot <- 1:nrow(final_design)
 design_csv <- final_design[c("season", "greenhouse", "light", "heat", "variety", "side", "plot")]
 ```
 
-```{r}
+```{r, include= FALSE}
 
 cat("--- Design Validation Check ---\n\n")
 
@@ -295,14 +297,14 @@ anova(fit)
 Anova(fit, type = 2)
 ```
 
-### Model fit
+### Model fit:
 
 **R² = 0.968**, Adjusted **R² = 0.931** → the model explains most of the variation in quality.\
 **Residual SE = 1.76** → small compared to the treatment range.\
 No clear outliers or leverage points were found when checking diagnostic plots.\
 Two coefficients were undefined because of overlap between some factors, which is expected in a full factorial design.
 
-### Interpretation
+### Interpretation:
 
 Both **light** and **heat** increased mean quality, with **light intensity** having the strongest influence (p \< 0.001).\
 **Heat** also affected quality (p \< 0.001), though to a smaller extent.\
@@ -313,7 +315,7 @@ All **interaction terms** (e.g., heat × light) had p-values above 0.1, suggesti
 
 Overall, the results show that most of the change in quality can be explained by the main treatment factors — especially light — and the blocking effectively reduced environmental variation.
 
-### Model Diagnostics
+### Model Diagnostics:
 
 ```{r diagnostics, fig.height=6, fig.width=7, fig.cap="Residual diagnostic plots showing no serious violations of model assumptions. The Q-Q plot indicates approximate normality, and the residuals vs. fitted plot shows no strong patterns suggesting heteroscedasticity."}
 
@@ -352,100 +354,171 @@ All **interaction terms** (e.g., heat × light) had p-values above 0.1, suggesti
 
 ### Interaction plots:
 
-```{r , fig.height=6, fig.width=7, fig.cap="The following plots explore how **Heat**, **Light**, and **Variety** affect the mean chilli quality. Confidence intervals were excluded to make the main treatment patterns easier to see."}
+```{r , fig.height=5, fig.width=10, fig.cap="Interaction plots for mean quality based on Heat and Light levels, aggregated across both varieties."}
 
 # Interaction plots: 
-par(mfrow = c(2, 2), mar = c(4, 4, 2, 1))
+par(mfrow = c(1,2))
 
 # quality vs LIGHT by HEAT
 interaction.plot(x.factor = dat$light, trace.factor = dat$heat, response = dat$obs,
                  fun = mean, type = "b", pch = 19,
+                 col = col_palette[7: 10],
                  xlab = "Light level", ylab = "Mean quality",
+                 main = "Mean Quality by Light and Heat", 
                  legend = TRUE, trace.label = "Heat")
 
 # quality vs HEAT by LIGHT
 interaction.plot(x.factor = dat$heat, trace.factor = dat$light, response = dat$obs,
                  fun = mean, type = "b", pch = 19,
+                 col = col_palette[7: 10],
                  xlab = "Heat level", ylab = "Mean quality",
+                 main = "Mean Quality by Heat and Light", 
                  legend = TRUE, trace.label = "Light")
+par(mfrow = c(1,1))
+```
+
+```{r, fig.height=5, fig.width=10, fig.cap="Heat x Light interaction plots for mean quality, shown separately for Variety R (left) and Variety F (right)"}
 
 # By variety
 par(mfrow = c(1,2))
 with(subset(dat, variety == "R"),
      interaction.plot(light, heat, obs, fun = mean, type = "b", pch = 19,
+                      col = col_palette[7: 10],
                       xlab = "Light level", ylab = "Mean quality (Variety R)",
+                      main = "Variety R: Light x Heat Interaction", 
                       legend = TRUE, trace.label = "Heat"))
 with(subset(dat, variety == "F"),
      interaction.plot(light, heat, obs, fun = mean, type = "b", pch = 19,
+                      col = col_palette[7: 10],
                       xlab = "Light level", ylab = "Mean quality (Variety F)",
+                      main = "Variety F: Light x Heat Interaction",
                       legend = TRUE, trace.label = "Heat"))
 par(mfrow = c(1,1))
 
 ```
+### Interpretation: 
 
-### mean plots:
+From observation, the interaction plots appear to show strong interactions, as the lines are clearly not parallel. In the "Variety R" plot, the lines cross over each other, while in the "Mean Quality by Light and Heat" plot, the lines have very different slopes. This pattern suggests the factors are dependent implying effect of Light depends on the Heat level.Furthermore, the interaction pattern for "Variety R" looks completely different from the pattern for "Variety F," which suggests a 3-way interaction ($Heat \times Light \times Variety$).
 
-```{r}
+Despite this, we must treat this interpretation cautiously because these plots show raw data means, but our design is unbalanced due to missing observations making them statistically misleading/unreliable. Thus the only valid conclusions about interactions must come from ANOVA or plotting the model's Estimated Marginal Means.
 
-# Mean Plots
+### Mean plots:
 
-dat <- na.omit(mydata)
+The following plots explore how **Heat**, **Light**, and **Variety** affect the mean chilli quality.\
+Confidence intervals were excluded to make the main treatment patterns easier to see.
+
+```{r , fig.height=5, fig.width=10, fig.cap="Mean quality stratified by Variety. The plot shows mean quality by Light level (with lines for Heat)"}
+
+# ================================================================
+#  Mean plots WITHOUT CIs
+# ================================================================
+
+# Ensure factors are correctly coded
+
 dat <- dat %>%
   mutate(
-    heat = factor(heat),
-    light = factor(light),
+    heat    = factor(heat),
+    light   = factor(light),
     variety = factor(variety)
   )
 
-# Summary data
+# Summarise means
+
 sumdat <- dat %>%
   group_by(light, heat, variety) %>%
   summarise(
-    n = n(),
     mean = mean(obs),
-    sd = sd(obs),
-    se = sd / sqrt(n),
-    ci = 1.96 * se,  # 95% CI
     .groups = "drop"
   )
 
-# Mean quality by Light split by variety
+# 1) Mean quality by LIGHT, by Variety
 ggplot(sumdat, aes(x = light, y = mean, group = heat,
                    linetype = heat, shape = heat)) +
   geom_line() +
   geom_point(size = 2) +
-  geom_errorbar(aes(ymin = mean - ci, ymax = mean + ci), width = 0.15) +
   facet_wrap(~ variety) +
-  labs(title = "Mean quality by Light (lines = Heat), split by Variety",
-       x = "Light level", y = "Mean quality", linetype = "Heat", shape = "Heat") +
-  theme_minimal(base_size = 12)
+  labs(title = "Mean quality by Light (lines = Heat), stratified by Variety",
+       x = "Light level", y = "Mean quality",
+       linetype = "Heat", shape = "Heat") +
+  theme_minimal(base_size = 13) + 
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
 
+```
 
-# Mean quality by Heat split by variety
+```{r, fig.height=5, fig.width=10, fig.cap="Mean quality stratified by Variety. The plot shows mean quality by Heat level (with lines for Light)"}
+
+# 2) Mean quality by HEAT, by Variety
 ggplot(sumdat, aes(x = heat, y = mean, group = light,
                    linetype = light, shape = light)) +
   geom_line() +
   geom_point(size = 2) +
-  geom_errorbar(aes(ymin = mean - ci, ymax = mean + ci), width = 0.15) +
   facet_wrap(~ variety) +
-  labs(title = "Mean quality by Heat (lines = Light), split by Variety",
-       x = "Heat level", y = "Mean quality", linetype = "Light", shape = "Light") +
-  theme_minimal(base_size = 12)
-
-# Mean quality by Light
-ggplot(sumdat, aes(x = light, y = mean, group = interaction(heat, variety),
-                   linetype = heat, shape = heat, colour = variety)) +
-  geom_line() +
-  geom_point(size = 2) +
-  geom_errorbar(aes(ymin = mean - ci, ymax = mean + ci), width = 0.15) +
-  labs(title = "Mean quality by Light (lines = Heat; colour = Variety)",
-       x = "Light level", y = "Mean quality",
-       linetype = "Heat", shape = "Heat", colour = "Variety") +
-  theme_minimal(base_size = 12)
+  labs(title = "Mean quality by Heat (lines = Light), stratified by Variety",
+       x = "Heat level", y = "Mean quality",
+       linetype = "Light", shape = "Light") +
+  theme_minimal(base_size = 13)+ 
+  theme(plot.title = element_text(hjust = 0.5, face = "bold")) 
 
 
 ```
 
+```{r, , fig.height=4, fig.width=7, fig.cap="Mean quality by Light level, showing the combined Heat x Light x Variety interaction. Line type represents the Heat level, and color represents the Variety"}
+
+# 3) Mean quality by LIGHT (lines = HEAT; colour = Variety)
+ggplot(sumdat, aes(x = light, y = mean,
+                   group = interaction(heat, variety),
+                   linetype = heat, shape = heat, colour = variety)) +
+  geom_line() +
+  geom_point(size = 2) +
+  labs(title = "Mean quality by Light (lines = Heat; colour = Variety)",
+       x = "Light level", y = "Mean quality",
+       linetype = "Heat", shape = "Heat", colour = "Variety") +
+  theme_minimal(base_size = 13)
+
+```
+
+### Interpretation of Mean Plots
+
+The three mean plots above show the relationships between **Heat**, **Light**, and **Variety** on average chilli quality.
+
+#### Mean quality by Light (lines = Heat), faceted by Variety
+
+-   For both varieties (**Furious** and **Redhot**), mean quality **increases steadily** as Light level increases.\
+-   The lines for different Heat levels move upward together, meaning that **higher Light improves quality across all Heat levels**.\
+-   *Furious* generally achieves **slightly higher mean quality** than *Redhot*.
+
+**Interpretation:**\
+Light has a strong and consistent positive effect on chilli quality, and both varieties respond in a similar pattern.
+
+#### Mean quality by Heat (lines = Light), faceted by Variety
+
+-   The lines are **more scattered** with no clear trend as Heat increases.\
+-   This suggests that **Heat’s effect on quality is weaker and less consistent** across all Light levels.\
+-   Both varieties show small ups and downs, but no steady direction.
+
+**Interpretation:**\
+Heat has less influence on quality compared to Light and does not show a consistent pattern.
+
+#### Mean quality by Light (lines = Heat; colour = Variety)
+
+-   Both *Furious* (red) and *Redhot* (blue) lines **rise with increasing Light**, showing that Light has a strong overall effect.\
+-   The shapes of the lines are **very similar between varieties**, and they rarely cross, meaning **no major interactions**.\
+-   *Furious* tends to have **slightly higher quality scores overall**.
+
+**Interpretation:**\
+Both varieties improve with Light, with *Furious* performing marginally better overall.\
+The effects of Heat, Light, and Variety appear largely independent.
+
+### Overall Summary
+
+Across all plots:
+
+-   **Light** shows the **strongest positive effect** on chilli quality.\
+-   **Heat** has a **smaller and less consistent influence**.\
+-   **Variety** has a **minor main effect**, with *Furious* slightly outperforming *Redhot*.\
+-   The mostly **parallel pattern of lines** suggests **weak or no interactions** among the factors.
+
+---
 
 ### Analysis Procedures
 
@@ -459,12 +532,174 @@ ggplot(sumdat, aes(x = light, y = mean, group = interaction(heat, variety),
 
 **Effect Estimation**: We computed estimated marginal means (EMMs) with 95% confidence intervals for all treatment combinations.
 
+------------------------------------------------------------------------
+
+# 🧑‍🌾 Conclusions:
+
+This section fits the full model (**obs \~ block + heat $\times$ times $\times$ light $\times$ variety + side**), runs Type-II ANOVA, extracts estimated marginal means with the **emmeans** package, answers the four farmer questions, and builds a cost-aware decision table. Plots and tables are produced inline.
+
+```{r}
+anova_tbl <- Anova(fit, type = 2)
+anova_tbl
+
+```
+
+**Reading the ANOVA:**
+
+-   Interactions with **variety** (heat:variety, light:variety, heat:light:variety) are **non-significant** → patterns don’t depend on variety.
+
+-   **Light** is strongly significant; **Heat** is weaker.
+
+-   **Variety** shows a small main effect.
+
+-   **Side** adds little after blocking; keep it per design.
+
+### 🔎 Q1 — Which Heat × Light is best?
+
+```{r}
+emm_hl      <- emmeans(fit, ~ heat * light)
+emm_hl_sum  <- summary(emm_hl)
+emm_hl_pairs<- pairs(emm_hl, adjust = "tukey")
+
+kable(emm_hl_sum, digits = 2, caption = "EMMs: Heat × Light")
+emm_hl_pairs
+
+```
+
+**Answer:** Highest mean quality is at **Heat 3 × Light 4**. Next best are typically **H4×L3** and **H3×L3** (small drops from the best). Tukey shows many low-HL combos are clearly worse.
+
+### 🌱 Q2 — Do best settings depend on Variety?
+
+```{r}
+emm_hl_by_v <- emmeans(fit, ~ heat * light | variety)
+best_by_v <- summary(emm_hl_by_v) |>
+group_by(variety) |>
+slice_max(emmean, n = 1, with_ties = FALSE)
+kable(best_by_v, digits = 2, caption = "Best Heat×Light within each Variety")
+
+```
+
+**Answer:** **No**. Best HL pattern is essentially the same for both varieties (interactions ns).
+
+### 🍅 Q3 — Does quality depend on Variety?
+
+```{r}
+emm_var     <- emmeans(fit, ~ variety)
+emm_var_sum <- summary(emm_var)
+var_contr   <- contrast(emm_var, "pairwise", adjust = "tukey")
+
+kable(emm_var_sum, digits = 2, caption = "Variety means (EMMs)")
+var_contr
+
+```
+
+**Answer:** **Yes, slightly.** *Redhot* ≈ **1.15** points higher than *Furious* (p ≈ 0.017).
+
+### 📈 Mean plots (no CIs; simple patterns)
+
+```{r}
+sumdat <- dat |>
+mutate(
+heat=factor(heat),
+light=factor(light),
+variety=factor(variety)
+) |>
+group_by(light, heat, variety) |>
+summarise(mean = mean(obs), .groups="drop")
+
+# 1) Mean by Light; lines = Heat; facet Variety
+
+ggplot(sumdat, aes(x=light, y=mean, group=heat, linetype=heat, shape=heat)) +
+geom_line() + geom_point(size=2) +
+facet_wrap(~ variety) +
+labs(title="Mean quality by Light (lines = Heat), faceted by Variety",
+x="Light level", y="Mean quality", linetype="Heat", shape="Heat") +
+theme_minimal(base_size = 13)
+
+# 2) Mean by Heat; lines = Light; facet Variety
+
+ggplot(sumdat, aes(x=heat, y=mean, group=light, linetype=light, shape=light)) +
+geom_line() + geom_point(size=2) +
+facet_wrap(~ variety) +
+labs(title="Mean quality by Heat (lines = Light), faceted by Variety",
+x="Heat level", y="Mean quality", linetype="Light", shape="Light") +
+theme_minimal(base_size = 13)
+
+# 3) Mean by Light; lines = Heat; colour = Variety
+
+ggplot(sumdat, aes(x=light, y=mean,
+group=interaction(heat,variety),
+linetype=heat, shape=heat, colour=variety)) +
+geom_line() + geom_point(size=2) +
+labs(title="Mean quality by Light (lines = Heat; colour = Variety)",
+x="Light level", y="Mean quality",
+linetype="Heat", shape="Heat", colour="Variety") +
+theme_minimal(base_size = 13)
+
+```
+
+**Reading the plots:**
+
+-   **Light** rises cleanly → strong positive effect.
+
+-   **Heat** shows smaller, less consistent shifts.
+
+-   Varieties move in parallel → no meaningful interactions.
+
+### ⚖️ Q4 — How big are differences? (rank & cost-aware choice)
+
+```{r}
+decision_tbl <- emm_hl_sum |>
+as.data.frame() |>
+mutate(
+heat  = as.integer(as.character(heat)),
+light = as.integer(as.character(light))
+) |>
+rename(mean = emmean, lower = lower.CL, upper = upper.CL) |>
+arrange(desc(mean)) |>
+mutate(best_mean = first(mean),
+delta_vs_best = mean - best_mean,   # negative = lower than best
+energy_proxy = heat + light) |>
+select(heat, light, mean, lower, upper, delta_vs_best, energy_proxy)
+
+kable(decision_tbl, digits = 2,
+caption = "Ranked Heat×Light (Δ = mean − best; energy proxy = heat + light)")
+
+near_optimal <- decision_tbl |>
+filter(delta_vs_best >= -2.0) |>
+arrange(energy_proxy, desc(mean))
+
+kable(near_optimal, digits = 2,
+caption = "Near-optimal within 2 points of best (sorted by energy proxy)")
+
+```
+
+**Observation:**
+
+-   **Best:** **H3×L4** (energy proxy 7).
+
+-   **Near-ties:** **H4×L3** (≈ −1.1, energy 7).
+
+-   **Cheaper tolerance option:** **H3×L3** (≈ −1.7, energy 6).
 
 ## Optimal Conditions
 
 ```{r best-combinations}
-# Find top combinations
-top_combos <- sumdat %>%
+
+# First, create a proper summary with confidence intervals
+sumdat_with_ci <- dat %>%
+  group_by(light, heat, variety) %>%
+  summarise(
+    mean = mean(obs),
+    n = n(),
+    sd = sd(obs),
+    se = sd / sqrt(n),
+    ci = qt(0.975, df = n-1) * se,  # 95% CI
+    .groups = "drop"
+  )
+
+# Then find top combinations with proper CIs
+top_combos <- sumdat_with_ci %>%
   arrange(desc(mean)) %>%
   mutate(
     mean_quality = mean,
@@ -478,30 +713,23 @@ kable(top_combos[, c("variety", "light", "heat", "mean_quality", "ci_lower", "ci
       caption = "Top three treatment combinations by mean quality score",
       col.names = c("Variety", "Light", "Heat", "Mean Quality", "CI Lower", "CI Upper"),
       align = c("l", "c", "c", "r", "r", "r"))
+
 ```
+.
 
-------------------------------------------------------------------------
-
-# 🧑‍🌾 Conclusion:
-
-1.  **Optimal Growing Conditions**: \[State the best combination, e.g., "Light level 4 with Heat level 3 produces the highest quality chilies"\]
-
-2.  **Effect Sizes**: \[Quantify improvements, e.g., "The optimal combination yields quality scores approximately X points higher than standard conditions (Light 1, Heat 1), representing a Y% improvement"\]
-
-3.  **Variety Differences**: \[Discuss whether varieties respond differently and which performs better overall\]
-
-4.  **Interaction Effects**: \[Explain whether light and heat work synergistically or independently\]
+-   **Cost-aware recommendation:** 
 
 ---
+
 # 🌞 Future Reccomendations:
 
-**Primary Recommendation**: Based on this experiment, we recommend \[specific combination\] for maximizing chili quality.
+**Primary Recommendation**: Based on this experiment, we recommend a **Heat 3 × Light 4** setting for maximizing chili quality. Moderate heat and high light leads to best crop quality and yield.
 
-**Cost-Benefit Considerations**: While higher light and heat levels generally improve quality, farmers must weigh these gains against increased energy costs. \[If results show diminishing returns, state this: "Light level 3 may offer the best cost-quality balance, as level 4 provides only marginal improvements at substantially higher cost."\]
+**Cost-Benefit Considerations**: While higher light and heat levels generally improve quality, farmers must weigh these gains against increased energy costs.
 
-**Variety Selection**: \[Recommend which variety to grow, or under what conditions each variety excels\]
+**Variety Selection**: ** *Redhot* ≈ **1.15** points higher than *Furious* (p ≈ 0.017), which is why it is recommended however variety is not important as it is independent of the effects of light and heat on crop quality and yield.(all HL×Var interactions non-significant).
 
-**Practical Implementation**: - Start with \[recommended combination\] for highest quality production - If costs are prohibitive, \[alternative combination\] offers nearly comparable quality at lower expense - Monitor results and adjust based on economic returns
+**Practical Implementation**: - If energy is a concern, **H4×L3** (≈ −1.1) or **H3×L3** (≈ −1.7; lower proxy) are practical alternatives.
 
 ## Study Limitations
 
@@ -526,5 +754,12 @@ kable(top_combos[, c("variety", "light", "heat", "mean_quality", "ci_lower", "ci
 ------------------------------------------------------------------------
 
 # References:
+
+-   STA2005S Experimental Design Project (2025) handout. Department of Statistical Sciences, UCT.
+-   R Core Team (2025). *R: A Language and Environment for Statistical Computing*. R Foundation for Statistical Computing, Vienna.
+-   Fox, J. & Weisberg, S. (2019). *An R Companion to Applied Regression* (3rd ed.). (used for `car::Anova`)
+-   Lenth, R. V. (2024). *emmeans: Estimated Marginal Means*. R package.
+-   Wickham, H., François, R., Henry, L., & Müller, K. (2023). *dplyr: A Grammar of Data Manipulation*. R package.
+-   Wickham, H. (2016). *ggplot2: Elegant Graphics for Data Analysis*. Springer. (used for plots)
 
 ------------------------------------------------------------------------
