@@ -1,5 +1,5 @@
 ---
-title: "Experimental Design Project"
+title: " 📊 Experimental Design Project 📊"
 subtitle: "STA2005S - 2025"
 author: 
   - "Maryam Abrahams (ABRMAR043)"
@@ -7,33 +7,39 @@ author:
 format: pdf
 ---
 
-# Experimental Design and Randomization:
+# Plagiarism Statement: 
+
+# 🌶️ Introduction:
 
 The two chilli farmers, Ms Hopeful and Mr Growing, compete head to head for the hearts and minds of the South African chilli market. But despite their names Ms Hopeful seems to always get higher chilli yields than Mr Growing. In Mr Growing's eyes this cannot continue.
 
-### Aim: 
+### Aim:
+
 This experiment aims to systematically evaluate the effect of light levels, heat levels and chilli variety on crop quality and yield. With our results we will be able to give evidence-based recommendations on optimal growing conditions.
 
-Particularly we seek to answer: 
+**Particularly we seek to answer:**
 
-1. Which light and heat settings produce the highest quality chillies?
+1.  Which light and heat settings produce the highest quality chillies?
 
-2. Does the above depend on variety?
+2.  Does the above depend on variety?
 
-3. Does quality depend on variety?
+3.  Does quality depend on variety?
 
-4. How big are the differences?
+4.  How big are the differences?
 
 ### Priori Hypothesis:
 
 Prior to collecting the data, we hypothesize:
 
-  - $H{1}$: Quality and yield will increase as light increases and with moderate heat levels, as either extreme of heat can lead to some form of denaturing of the plant's cells.
-  
-  - $H{2}$: Although their would be natural differences between varieties of chillies the light-heat response patterns will be similar between varieties.
-  
-  - $H{3}$: Quality of chilli would be heavily dependent on variety as taste, and look are variety-specific.
+-   $H{1}$: Quality and yield will increase as light increases and with moderate heat levels, as either extreme of heat can lead to some form of denaturing of the plant's cells.
 
+-   $H{2}$: Although their would be natural differences between varieties of chillies the light-heat response patterns will be similar between varieties.
+
+-   $H{3}$: Quality of chilli would be heavily dependent on variety as taste, and look are variety-specific.
+
+- $H{4}$: Side (North/South) has a negligible effect.
+
+---
 
 ```{r setup, include=FALSE}
 
@@ -69,65 +75,72 @@ col_palette = c (
 )
 ```
 
+# 🔍 Experimental Design and Randomization:
+
 ## Simulating data:
 
 We created the design matrix in accordance to a **Nested Latin Square design**, similar to a factorial design, however since we lack the resources needed to experiment on every possible combination, instead we pick combinations all necessary combinations needed to represent the effects of the different light and heat levels on the chillies.
 
 **treatment factors:**
 
-  - Light: 4 levels (1, 2, 3, 4)
-  
-  - Heat: 4 levels (1, 2, 3, 4)
-  
-  $\implies 16$ unique treatments
+-   Light: 4 levels (1, 2, 3, 4)
+
+-   Heat: 4 levels (1, 2, 3, 4)
+
+$\implies 16$ unique treatments
 
 **blocking factors:**
 
-  - Season: (1, 2)
-  
-  - Greenhouse: (A, B)
-  
-  - Side of greenhouse: (N = north-facing, S = south-facing)
-  
-  - Chilli variety: (R = red-hot, F = furious)
+-   Season: (1, 2)
 
-![Blocking factors Diagram](Example_setup.png)
+-   Greenhouse: (A, B)
 
-**Design:** 
+-   Side of greenhouse: (N = north-facing, S = south-facing)
 
-Within our design we have an outer $2\times2$ latin square design, creating a 4 outer blocks seperating the 4 possible combinations of the 2 greenhouses (A & B) and the 2 seasons.
-Each of these represents a separate experimental block.
+-   Chilli variety: (R = red-hot, F = furious)
 
-Inside each block, there is an inner $2\times2$ latin square layer, creating a 4 block grid of each of the 4 possible combinations of the side-facing of the greenhouse (N & S) and variety of chilli. 
+![Blocking example greenhouse](Example_setup.png)
 
-Then, within each side-variety combination, we assign random heat and light levels such that there every heat and light level, of which there are both 4, is tested every possible side-variety combination block, from the 16 available plots in each greenhouse-season outer block combination.
+**Design:**
 
-This means the structure is such that: 
-  Heat-Light is nested within Side-variety which are is nested Season-greenhouse combinations.
+Within our design we have an outer $2\times2$ Latin square design, creating a 4 outer blocks separating the 4 possible combinations of the 2 greenhouses (A & B) and the 2 seasons. Each of these represents a separate experimental block.
 
-![Blocking factors Diagram](Blocking_factors_pic.png)
+- Block 1 = Season 1 × Greenhouse A\
+- Block 2 = Season 1 × Greenhouse B\
+- Block 3 = Season 2 × Greenhouse A\
+- Block 4 = Season 2 × Greenhouse B
 
----
+Inside each block, there is an inner $2\times2$ Latin square layer, creating a 4 block grid. The variety (*Redhot* or *Furious*) and side (*North* or *South*) were assigned according to the plan shown below:
 
-### Randomization: 
+| Side  | Variety      | Description |
+|-------|--------------|-------------|
+| North | Redhot (RN)  | 4 plots     |
+| North | Furious (FN) | 4 plots     |
+| South | Redhot (RS)  | 4 plots     |
+| South | Furious (FS) | 4 plots     |
 
-For each season, we randomized the 32 treatment combinations independently to the 32 available plots (16 plots × 2 greenhouses):
+This gives 8 plots per variety and 8 plots per side in each block — ensuring full balance within every greenhouse–season combination.
 
-1. Created all 32 treatment combinations using `expand.grid()`
+Then, within each side-variety combination, we assign random heat and light levels. This means that Inside each block, all **16 combinations** of **Heat (H1–H4)** and **Light (L1–L4)** were used once, creating a full factorial of the two treatment factors.\
+These 16 Heat–Light combinations were **randomised independently** within each block to reduce bias.
 
-2. For Season 1: Randomly permuted treatments and assigned to plots within each greenhouse
+The overarching structure is thus such that: Heat-Light is nested within Side-variety which are is nested Season-greenhouse combinations.
 
-3. For Season 2: Independently randomized treatments again to plots
+![Blocking factors Diagram](Blocking_factors_pic.png){width=60%}
 
-4. Set random seed (`set.seed(22)`) for reproducibility
 
-This design ensures:
+### Randomization:
 
-- Each treatment combination appears exactly twice (once per season)
+Each side-variety combination gets its own independent randomization of heat and light such that there is no systematic crossing of all 4 heat levels $\times$ all 4 light levels $\times$ all sides $\times$ all varieties. In this way all levels of heat and light respectively are represented in a balanced manner, but not all combinations of heat and light with the other variables are tested.
 
-- Complete randomization within each season-greenhouse combination
+In this way there is confounding of higher order combinations but this is due to our restrictive number of available plots and resource limitations. The combination of our clever blocking within the design as well as the use of randomization mitigates the effects of this potential confounding.
 
-- No confounding between treatment effects and blocking factors
+### Simulation: 
+
+
+The simulated quality data was generated using the **`get.observations()`** function with a fixed random seed (**`set.seed(22)`**) to ensure reproducibility.
+
+------------------------------------------------------------------------
 
 ```{r}
 set.seed(22)
@@ -188,39 +201,31 @@ design_csv <- final_design[c("season", "greenhouse", "light", "heat", "variety",
 
 cat("--- Design Validation Check ---\n\n")
 
-# Get all unique combinations of season and greenhouse
+# unique combinations of s and gh
 all_main_blocks <- unique(design_csv[, c("season", "greenhouse")])
 
-# Loop through each unique season/greenhouse combination
 for (i in 1:nrow(all_main_blocks)) {
   
-  # Get the current season and greenhouse
   s <- all_main_blocks$season[i]
   gh <- all_main_blocks$greenhouse[i]
   
-  # Print a "pretty block" header
   cat(paste("========================================\n"))
   cat(paste("    Checking Season:", s, "| Greenhouse:", gh, " \n"))
   cat(paste("========================================\n"))
   
-  # Subset the data for this specific main block
+
   current_block_data <- subset(design_csv, season == s & greenhouse == gh)
   
-  # Get the unique side-variety combinations within this block (e.g., "n F", "n R", ...)
   side_variety_combos <- sort(unique(paste(current_block_data$side, current_block_data$variety)))
   
-  # Loop through each side-variety sub-block
+
   for (sv in side_variety_combos) {
     cat("\n  Sub-block (Side / Variety):", sv, "\n")
-    
-    # Get the data for the specific sub-block
     subset_data <- current_block_data[paste(current_block_data$side, current_block_data$variety) == sv, ]
-    
-    # Check the heat and light levels present in these plots
     cat("    > Heat levels present: ", paste(sort(unique(subset_data$heat)), collapse=", "), "\n")
     cat("    > Light levels present:", paste(sort(unique(subset_data$light)), collapse=", "), "\n")
   }
-  cat("\n") # Add a final newline for spacing
+  cat("\n")
 }
 
 cat("--- Validation Complete ---\n")
@@ -230,107 +235,127 @@ write.csv(design_csv, "design.csv", row.names = FALSE, quote = FALSE)
 
 ```
 
-## Obtaining observations:
-
 ```{r}
-design <- read.csv("design.csv")
 
+# Obtaining observations:
+design <- read.csv("design.csv")
 mydata <- get.observations(design)
 
 mydata
 ```
 
-### Fitting the models and checking assumptions: 
+------------------------------------------------------------------------
 
-We fitted a linear model with quality score as the response variable:
+# 🧮 Analysis and Results:
 
-$$
-Y_{ijklm} = \mu + \beta_i + \gamma_j + \delta_k + \lambda_l + \nu_m + (\delta\lambda)_{kl} + (\delta\nu)_{km} + (\lambda\nu)_{lm} + (\delta\lambda\nu)_{klm} + \epsilon_{ijklm}
-$$
+### Fitting the models and checking assumptions:
 
-where:
+```{r , include=FALSE}
 
-- $Y_{ijklm}$ = quality score
-- $\mu$ = overall mean
-- $\beta_i$ = block effect (season × greenhouse, i = 1,...,4)
-- $\gamma_j$ = side effect (north/south, j = 1,2)
-- $\delta_k$ = light level effect (k = 1,2,3,4)
-- $\lambda_l$ = heat level effect (l = 1,2,3,4)
-- $\nu_m$ = variety effect (m = R, F)
-- Interaction terms for all two-way and three-way interactions among treatment factors
-- $\epsilon_{ijklm}$ = random error, assumed $\sim N(0, \sigma^2)$
-
-Block and side were treated as fixed effects to control for their influence, while our primary interest was in the treatment factors (light, heat, variety) and their interactions.
-
-### Analysis Procedures
-
-**Missing Values**: Cases with missing observations were excluded from analysis using complete-case analysis, resulting in `r nrow(na.omit(mydata))` observations for model fitting.
-
-**ANOVA**: We used Type II sums of squares to test main effects and interactions, as this approach appropriately handles unbalanced designs caused by missing data and tests each effect after accounting for all other effects at the same or lower level.
-
-**Multiple Testing**: Given the exploratory nature of this study and the relatively small number of pre-specified hypotheses, we report both unadjusted p-values and note effects significant at α = 0.05. For post-hoc pairwise comparisons, we apply Tukey's HSD adjustment.
-
-**Model Diagnostics**: We examined residual plots (residuals vs. fitted, Q-Q plot, scale-location, and leverage plots) to verify assumptions of normality, homoscedasticity, and identify potential outliers.
-
-**Effect Estimation**: We computed estimated marginal means (EMMs) with 95% confidence intervals for all treatment combinations.
-
-
-```{r}
 # Convert variables to factors ---------------------------------------------
-mydata$season     <- factor(mydata$season)
-mydata$greenhouse <- factor(mydata$greenhouse)
-mydata$heat       <- factor(mydata$heat)
-mydata$light      <- factor(mydata$light)
-mydata$variety    <- factor(mydata$variety)
-mydata$side       <- factor(mydata$side)
+dat <- na.omit(mydata)
+dat$season     <- factor(dat$season)
+dat$greenhouse <- factor(dat$greenhouse)
+dat$heat       <- factor(dat$heat)
+dat$light      <- factor(dat$light)
+dat$variety    <- factor(dat$variety)
+dat$side       <- factor(dat$side)
+dat$block      <- interaction(dat$season, dat$greenhouse, drop = TRUE)
 
-# Create one blocking factor (season × greenhouse)
-mydata$block <- interaction(mydata$season, mydata$greenhouse, drop = TRUE)
+# Fit model ------------------------------------------------------------------
+fit <- lm(obs ~ block + heat*light*variety + side, data = dat)
 
-# Fit the linear model 
-fit <- lm(obs ~ block + heat*light*variety + side, data = mydata)
-
-
-# View model summary 
+# Model summary --------------------------------------------------------------
 summary(fit)
 ```
 
-### Model Diagnostics
+The model uses **block** to adjust for background variation across the four Latin Square positions (the combinations of Season and Greenhouse).\
 
-```{r diagnostics, fig.height=6, fig.width=7, fig.cap="Residual diagnostic plots showing no serious violations of model assumptions. The Q-Q plot indicates approximate normality, and the residuals vs. fitted plot shows no strong patterns suggesting heteroscedasticity."}
-par(mfrow = c(2, 2), mar = c(4, 4, 2, 1))
-plot(fit, which = 1, col = col_palette[1])  
-plot(fit, which = 2, col = col_palette[1])  
-plot(fit, which = 3, col = col_palette[1])  
-plot(fit, which = 5, col = col_palette[1])  
-par(mfrow = c(1, 1))
-```
+It then tests how **heat**, **light**, and **variety** affect the response and whether they interact.\
 
-## Analysis of Variance: 
+The **side** factor is included only to correct for small layout or position effects within each greenhouse.
 
-```{r}
+## ANOVA:
+
+The experiment used a **Latin Square design** with **Season × Greenhouse** forming the **2×2 blocking structure**, and a full factorial of\
+
+**Heat (4 levels)** × **Light (4 levels)** × **Variety (2 levels)**.
+
+The fitted linear model was:
+
+$$
+\text{obs} = \text{block} + \text{heat} \times \text{light} \times \text{variety} + \text{side}
+$$
+
+```{r, include=FALSE}
 # Type I ANOVA
 anova(fit)
 
 # Type II ANOVA
 Anova(fit, type = 2)
+```
+
+### Model fit
+
+**R² = 0.968**, Adjusted **R² = 0.931** → the model explains most of the variation in quality.\
+**Residual SE = 1.76** → small compared to the treatment range.\
+No clear outliers or leverage points were found when checking diagnostic plots.\
+Two coefficients were undefined because of overlap between some factors, which is expected in a full factorial design.
+
+### Interpretation
+
+Both **light** and **heat** increased mean quality, with **light intensity** having the strongest influence (p \< 0.001).\
+**Heat** also affected quality (p \< 0.001), though to a smaller extent.\
+**Variety** showed a mild difference (p = 0.018), where variety **R** performed slightly better than **F**.\
+The **block** term (p = 0.0067) shows that adjusting for season and greenhouse helped control background variation.\
+The **side** factor (p = 0.015) had a small effect, possibly linked to minor position or orientation differences.\
+All **interaction terms** (e.g., heat × light) had p-values above 0.1, suggesting the effects act independently.
+
+Overall, the results show that most of the change in quality can be explained by the main treatment factors — especially light — and the blocking effectively reduced environmental variation.
+
+### Model Diagnostics
+
+```{r diagnostics, fig.height=6, fig.width=7, fig.cap="Residual diagnostic plots showing no serious violations of model assumptions. The Q-Q plot indicates approximate normality, and the residuals vs. fitted plot shows no strong patterns suggesting heteroscedasticity."}
 
 # Check residual assumptions -----------------------------------------------
-par(mfrow = c(1,1))  # reset layout
-plot(fit, which = 1)  # Residuals vs Fitted
-plot(fit, which = 2)  # Normal Q–Q
-plot(fit, which = 3)  # Scale–Location
-plot(fit, which = 5)  # Residuals vs Leverage
+
+par(mfrow = c(2, 2), mar = c(4, 4, 2, 1))
+plot(fit, which = 1, col = col_palette[1])  # Residuals vs Fitted
+plot(fit, which = 2, col = col_palette[1])  # Normal Q–Q
+plot(fit, which = 3, col = col_palette[1])  # Scale–Location
+plot(fit, which = 5, col = col_palette[1])  # Residuals vs Leverage
+par(mfrow = c(1, 1))
 
 ```
 
+Both **light** and **heat** increased mean quality, with **light intensity** having the strongest influence (p \< 0.001).
+
+\
+**Heat** also affected quality (p \< 0.001), though to a smaller extent.
+
+**Variety** showed a mild difference (p = 0.018), where variety **R** performed slightly better than **F**.
+
+\
+The **block** term (p = 0.0067) shows that adjusting for season and greenhouse helped control background variation.
+
+\
+The **side** factor was aliased in the Type II ANOVA, meaning it was linearly dependent on other variables in the model.
+
+\
+This suggests that side orientation (north/south) did not contribute additional information once **block**, **heat**, **light**, and **variety** were included.\
+Any minor variation linked to side was already captured by the blocking structure (Season × Greenhouse).
+
+\
+All **interaction terms** (e.g., heat × light) had p-values above 0.1, suggesting that the effects act independently.
+
 ## Treatment Effects Visualization:
 
-### Interaction plots: 
-```{r}
+### Interaction plots:
+
+```{r , fig.height=6, fig.width=7, fig.cap="The following plots explore how **Heat**, **Light**, and **Variety** affect the mean chilli quality. Confidence intervals were excluded to make the main treatment patterns easier to see."}
 
 # Interaction plots: 
-dat <- na.omit(mydata)
+par(mfrow = c(2, 2), mar = c(4, 4, 2, 1))
 
 # quality vs LIGHT by HEAT
 interaction.plot(x.factor = dat$light, trace.factor = dat$heat, response = dat$obs,
@@ -358,7 +383,8 @@ par(mfrow = c(1,1))
 
 ```
 
-### mean plots: 
+### mean plots:
+
 ```{r}
 
 # Mean Plots
@@ -419,9 +445,20 @@ ggplot(sumdat, aes(x = light, y = mean, group = interaction(heat, variety),
 
 
 ```
----
 
-# Analysis and Results:
+
+### Analysis Procedures
+
+**Missing Values**: Cases with missing observations were excluded from analysis using complete-case analysis, resulting in `r nrow(na.omit(mydata))` observations for model fitting.
+
+**ANOVA**: We used Type II sums of squares to test main effects and interactions, as this approach appropriately handles unbalanced designs caused by missing data and tests each effect after accounting for all other effects at the same or lower level.
+
+**Multiple Testing**: Given the exploratory nature of this study and the relatively small number of pre-specified hypotheses, we report both unadjusted p-values and note effects significant at α = 0.05. For post-hoc pairwise comparisons, we apply Tukey's HSD adjustment.
+
+**Model Diagnostics**: We examined residual plots (residuals vs. fitted, Q-Q plot, scale-location, and leverage plots) to verify assumptions of normality, homoscedasticity, and identify potential outliers.
+
+**Effect Estimation**: We computed estimated marginal means (EMMs) with 95% confidence intervals for all treatment combinations.
+
 
 ## Optimal Conditions
 
@@ -443,53 +480,51 @@ kable(top_combos[, c("variety", "light", "heat", "mean_quality", "ci_lower", "ci
       align = c("l", "c", "c", "r", "r", "r"))
 ```
 
---- 
+------------------------------------------------------------------------
 
-# Conclusion:
+# 🧑‍🌾 Conclusion:
 
-1. **Optimal Growing Conditions**: [State the best combination, e.g., "Light level 4 with Heat level 3 produces the highest quality chilies"]
+1.  **Optimal Growing Conditions**: \[State the best combination, e.g., "Light level 4 with Heat level 3 produces the highest quality chilies"\]
 
-2. **Effect Sizes**: [Quantify improvements, e.g., "The optimal combination yields quality scores approximately X points higher than standard conditions (Light 1, Heat 1), representing a Y% improvement"]
+2.  **Effect Sizes**: \[Quantify improvements, e.g., "The optimal combination yields quality scores approximately X points higher than standard conditions (Light 1, Heat 1), representing a Y% improvement"\]
 
-3. **Variety Differences**: [Discuss whether varieties respond differently and which performs better overall]
+3.  **Variety Differences**: \[Discuss whether varieties respond differently and which performs better overall\]
 
-4. **Interaction Effects**: [Explain whether light and heat work synergistically or independently]
+4.  **Interaction Effects**: \[Explain whether light and heat work synergistically or independently\]
 
-# Future Reccomendations:
+---
+# 🌞 Future Reccomendations:
 
-**Primary Recommendation**: Based on this experiment, we recommend [specific combination] for maximizing chili quality.
+**Primary Recommendation**: Based on this experiment, we recommend \[specific combination\] for maximizing chili quality.
 
-**Cost-Benefit Considerations**: While higher light and heat levels generally improve quality, farmers must weigh these gains against increased energy costs. [If results show diminishing returns, state this: "Light level 3 may offer the best cost-quality balance, as level 4 provides only marginal improvements at substantially higher cost."]
+**Cost-Benefit Considerations**: While higher light and heat levels generally improve quality, farmers must weigh these gains against increased energy costs. \[If results show diminishing returns, state this: "Light level 3 may offer the best cost-quality balance, as level 4 provides only marginal improvements at substantially higher cost."\]
 
-**Variety Selection**: [Recommend which variety to grow, or under what conditions each variety excels]
+**Variety Selection**: \[Recommend which variety to grow, or under what conditions each variety excels\]
 
-**Practical Implementation**:
-- Start with [recommended combination] for highest quality production
-- If costs are prohibitive, [alternative combination] offers nearly comparable quality at lower expense
-- Monitor results and adjust based on economic returns
+**Practical Implementation**: - Start with \[recommended combination\] for highest quality production - If costs are prohibitive, \[alternative combination\] offers nearly comparable quality at lower expense - Monitor results and adjust based on economic returns
 
 ## Study Limitations
 
-1. **Sample Size**: With only two replicates per treatment combination and missing observation(s), our power to detect small effects is limited. Confidence intervals for some comparisons are wide.
+1.  **Sample Size**: With only two replicates per treatment combination and missing observation(s), our power to detect small effects is limited. Confidence intervals for some comparisons are wide.
 
-2. **Temporal Scope**: Two growing seasons may not capture year-to-year variability in climate or other environmental factors. Long-term validation is recommended.
+2.  **Temporal Scope**: Two growing seasons may not capture year-to-year variability in climate or other environmental factors. Long-term validation is recommended.
 
-3. **Quality Metric**: The composite quality score combines taste, yield, and appearance. Economic returns may depend more heavily on one component (e.g., yield). Future studies should examine these components separately.
+3.  **Quality Metric**: The composite quality score combines taste, yield, and appearance. Economic returns may depend more heavily on one component (e.g., yield). Future studies should examine these components separately.
 
-4. **Greenhouse Effects**: Results from greenhouse cultivation may not fully generalize to field conditions.
+4.  **Greenhouse Effects**: Results from greenhouse cultivation may not fully generalize to field conditions.
 
-5. **Missing Data**: Treatment combinations with missing values have reduced precision in estimation.
+5.  **Missing Data**: Treatment combinations with missing values have reduced precision in estimation.
 
 ## Future Directions
 
-- Replicate the experiment with larger sample sizes to narrow confidence intervals
-- Conduct economic analysis incorporating energy costs and market prices
-- Separate quality into components (taste, yield, appearance) for targeted optimization  
-- Test intermediate settings between levels to fine-tune recommendations
-- Evaluate performance under varying weather conditions across multiple years
+-   Replicate the experiment with larger sample sizes to narrow confidence intervals
+-   Conduct economic analysis incorporating energy costs and market prices
+-   Separate quality into components (taste, yield, appearance) for targeted optimization\
+-   Test intermediate settings between levels to fine-tune recommendations
+-   Evaluate performance under varying weather conditions across multiple years
 
---- 
+------------------------------------------------------------------------
 
-# References: 
+# References:
 
----
+------------------------------------------------------------------------
