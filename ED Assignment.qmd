@@ -7,7 +7,7 @@ author:
 format: pdf
 ---
 
-# Plagiarism Statement: 
+![Blocking example greenhouse](Plaigirism1.jpg)
 
 # 🌶️ Introduction:
 
@@ -31,13 +31,13 @@ This experiment aims to systematically evaluate the effect of light levels, heat
 
 Prior to collecting the data, we hypothesize:
 
--   $H{1}$: Quality and yield will increase as light increases and with moderate heat levels, as either extreme of heat can lead to some form of denaturing of the plant's cells.
+-   $H_1$: There is a significant interaction between chilli variety and the light/heat settings on the quality score. Specifically, the optimal combination of light and heat will differ between the 'Redhot' and 'Furious' varieties.
 
--   $H{2}$: Although their would be natural differences between varieties of chillies the light-heat response patterns will be similar between varieties.
+-   $H_2$: Quality will increase with higher light levels and with intermediate heat levels (2-3), as extreme heat may damage plant cells while insufficient heat limits growth.
 
--   $H{3}$: Quality of chilli would be heavily dependent on variety as taste, and look are variety-specific.
+-   $H_3$:  Both varieties will show similar response patterns to light and heat treatments.
 
-- $H{4}$: Side (North/South) has a negligible effect.
+- $H_4$: Plot side (North/South) will have negligible effect on quality after accounting for other factors.
 
 ---
 
@@ -45,7 +45,7 @@ Prior to collecting the data, we hypothesize:
 
 # Imports, libraries, and setup 
 
-install.packages("EDproject_2.0.zip", repos = NULL, type = "win.binary")
+#install.packages("EDproject_2.0.zip", repos = NULL, type = "win.binary")
 
 library(EDproject)
 library(ggplot2)
@@ -80,7 +80,7 @@ col_palette = c (
 
 ## Simulating data:
 
-We created the design matrix in accordance to a **Nested Latin Square design**, similar to a factorial design, however since we lack the resources needed to experiment on every possible combination, instead we pick combinations all necessary combinations needed to represent the effects of the different light and heat levels on the chillies.
+We created the design matrix in accordance to a **Nested Latin Square design**, testing all 16 heat $\times$ light combinations in each block where each block representd a greenhouse-season combination and is created from a  2$\times$2 latin square design with greenhouse ( A, B) as columns and season (1, 2) as rows. 
 
 **treatment factors:**
 
@@ -99,6 +99,9 @@ $\implies 16$ unique treatments
 -   Side of greenhouse: (N = north-facing, S = south-facing)
 
 -   Chilli variety: (R = red-hot, F = furious)
+
+**response variables: ** quality score, which combines taste, yield, and look
+
 
 ![Blocking example greenhouse](Example_setup.png)
 
@@ -122,9 +125,6 @@ Inside each block, there is an inner $2\times2$ Latin square layer, creating a 4
 
 This gives 8 plots per variety and 8 plots per side in each block — ensuring full balance within every greenhouse–season combination.
 
-Then, within each side-variety combination, we assign random heat and light levels. This means that Inside each block, all **16 combinations** of **Heat (H1–H4)** and **Light (L1–L4)** were used once, creating a full factorial of the two treatment factors.\
-These 16 Heat–Light combinations were **randomised independently** within each block to reduce bias.
-
 The overarching structure is thus such that: Heat-Light is nested within Side-variety which are is nested Season-greenhouse combinations.
 
 ![Blocking factors Diagram](Blocking_factors_pic.png){width=70%}
@@ -132,9 +132,14 @@ The overarching structure is thus such that: Heat-Light is nested within Side-va
 
 ### Randomization:
 
-Each side-variety combination gets its own independent randomization of heat and light such that there is no systematic crossing of all 4 heat levels $\times$ all 4 light levels $\times$ all sides $\times$ all varieties. In this way all levels of heat and light respectively are represented in a balanced manner, but not all combinations of heat and light with the other variables are tested.
+Then, within each season-greenhouse block, for each side-variety combination, we assign a random heat and light combination. This means that Inside each block, all **16 combinations** of **Heat (H1–H4)** and **Light (L1–L4)** were used once, creating a full factorial of the two treatment factors.\
+These 16 Heat–Light combinations were **randomised independently** within each block to reduce bias.
 
-In this way there is confounding of higher order combinations but this is due to our restrictive number of available plots and resource limitations. The combination of our clever blocking within the design as well as the use of randomization mitigates the effects of this potential confounding.
+**Constraints: ** 
+
+Heat and light are partially confounded within side-variety combinations, meaning some higher-order interactions cannot be fully separated.
+
+We are limited to 2 greenhouses, 2 seasons, and 16 plots withni each of the greenhouses, 8 plots per side.
 
 ### Simulation: 
 
@@ -271,7 +276,7 @@ fit <- lm(obs ~ block + heat*light*variety + side, data = dat)
 summary(fit)
 ```
 
-The model uses **block** to adjust for background variation across the four Latin Square positions (the combinations of Season and Greenhouse).\
+The model uses **block** to adjust for background variation across the four season-greenhouse combination positions.
 
 It then tests how **heat**, **light**, and **variety** affect the response and whether they interact.\
 
@@ -398,9 +403,15 @@ par(mfrow = c(1,1))
 ```
 ### Interpretation: 
 
-From observation, the interaction plots appear to show strong interactions, as the lines are clearly not parallel. In the "Variety R" plot, the lines cross over each other, while in the "Mean Quality by Light and Heat" plot, the lines have very different slopes. This pattern suggests the factors are dependent implying effect of Light depends on the Heat level.Furthermore, the interaction pattern for "Variety R" looks completely different from the pattern for "Variety F," which suggests a 3-way interaction ($Heat \times Light \times Variety$).
+From observation, the interaction plots appear to show strong interactions, as the lines are not parallel. However, in all plots there is a strong main effect of the quality increasing as the light level increases, whereas, the heat lines show more variability and less consistent patterns.
 
-Despite this, we must treat this interpretation cautiously because these plots show raw data means, but our design is unbalanced due to missing observations making them statistically misleading/unreliable. Thus the only valid conclusions about interactions must come from ANOVA or plotting the model's Estimated Marginal Means.
+The non-parallel lines suggest possible interactions particularly in the Variety F plot where many lines cross between light levels 2 and 3. However the dramatic differences you're may be exaggerated as: 
+  
+  - No confidence intervals: means can't measure uncertainty.
+  
+  - Use of raw means: used simple averages not adjusted for blocking structure.
+  
+  - Scale exaggeration: the y-axis may make small differences look dramatic.
 
 ### Mean plots:
 
@@ -462,7 +473,7 @@ ggplot(sumdat, aes(x = heat, y = mean, group = light,
 
 ```
 
-```{r, , fig.height=4, fig.width=7, fig.cap="Mean quality by Light level, showing the combined Heat x Light x Variety interaction. Line type represents the Heat level, and color represents the Variety"}
+```{r , fig.height=4, fig.width=7, fig.cap="Mean quality by Light level, showing the combined Heat x Light x Variety interaction. Line type represents the Heat level, and color represents the Variety"}
 
 # 3) Mean quality by LIGHT (lines = HEAT; colour = Variety)
 ggplot(sumdat, aes(x = light, y = mean,
@@ -595,9 +606,10 @@ var_contr
 
 **Answer:** **Yes, slightly.** *Redhot* ≈ **1.15** points higher than *Furious* (p ≈ 0.017).
 
-### 📈 Mean plots (no CIs; simple patterns)
+## 📈 Mean plots (no CIs; simple patterns)
 
 ```{r}
+
 sumdat <- dat |>
 mutate(
 heat=factor(heat),
@@ -606,6 +618,10 @@ variety=factor(variety)
 ) |>
 group_by(light, heat, variety) |>
 summarise(mean = mean(obs), .groups="drop")
+
+```
+
+```{r, fig.height=3, fig.width=7, fig.cap="Mean plot with Light × Heat faceted by variety. Light shows strong positive effect on quality across all heat levels and both varieties."}
 
 # 1) Mean by Light; lines = Heat; facet Variety
 
@@ -616,6 +632,10 @@ labs(title="Mean quality by Light (lines = Heat), faceted by Variety",
 x="Light level", y="Mean quality", linetype="Heat", shape="Heat") +
 theme_minimal(base_size = 13)
 
+```
+
+```{r, fig.height=3, fig.width=7, fig.cap="Mean plot with Heat × Light faceted by variety.Heat effects are weaker and less consistent than light effects, with similar patterns across varieties."}
+
 # 2) Mean by Heat; lines = Light; facet Variety
 
 ggplot(sumdat, aes(x=heat, y=mean, group=light, linetype=light, shape=light)) +
@@ -624,6 +644,10 @@ facet_wrap(~ variety) +
 labs(title="Mean quality by Heat (lines = Light), faceted by Variety",
 x="Heat level", y="Mean quality", linetype="Light", shape="Light") +
 theme_minimal(base_size = 13)
+
+```
+
+```{r, fig.height=3, fig.width=7, fig.cap="Three-way imean plot of Light × Heat × Variety. Parallel response patterns suggest minimal interactions; light dominates quality improvements."}
 
 # 3) Mean by Light; lines = Heat; colour = Variety
 
@@ -747,7 +771,7 @@ kable(top_combos[, c("variety", "light", "heat", "mean_quality", "ci_lower", "ci
 
 -   Replicate the experiment with larger sample sizes to narrow confidence intervals
 -   Conduct economic analysis incorporating energy costs and market prices
--   Separate quality into components (taste, yield, appearance) for targeted optimization\
+-   Separate quality into components (taste, yield, appearance) for targeted optimization
 -   Test intermediate settings between levels to fine-tune recommendations
 -   Evaluate performance under varying weather conditions across multiple years
 
