@@ -91,7 +91,7 @@ col_palette = c (
 
 ## Simulating data:
 
-We created the design matrix in accordance to a **Nested Latin Square design**, testing all 16 heat $\times$ light combinations in each block where each block representd a greenhouse-season combination and is created from a  2$\times$2 latin square design with greenhouse ( A, B) as columns and season (1, 2) as rows. 
+We created the design matrix in accordance to a **Nested Latin Square design**, testing all 16 heat $\times$ light combinations in each block where each block represented a greenhouse-season combination and is created from a  2$\times$2 latin square design with greenhouse ( A, B) as columns and season (1, 2) as rows. 
 
 **treatment factors:**
 
@@ -212,7 +212,8 @@ for (i in 1:nrow(outer_latin_square)){
 final_design <- do.call(rbind, all_designs)
 final_design$plot <- 1:nrow(final_design)
 
-design_csv <- final_design[c("season", "greenhouse", "light", "heat", "variety", "side", "plot")]
+design_csv <- final_design[c("season", "greenhouse", "light", "heat",
+                             "variety", "side", "plot")]
 ```
 
 ```{r, include= FALSE}
@@ -739,6 +740,384 @@ kable(mydata, caption = "Simulated observations")
 # R code: 
 
 ```{r, eval= FALSE, echo=TRUE}
+
+# Imports, libraries, and setup 
+
+#install.packages("EDproject_2.0.zip", repos = NULL, type = "win.binary")
+
+library(EDproject)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(EDproject)
+library(car)
+library(knitr)
+library(emmeans)
+library(multcomp)
+
+# Set global format options
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, 
+                      fig.width = 6, fig.height = 4, fig.align = "center")
+
+# Making a color Palette for my document: 
+col_palette = c (
+  "#0B1D39", 
+  "#333333",
+  "#666666",
+  "#D3D3D3",
+  "#f8f8f8", 
+  "#F5F5F5",
+  "#007ACC",
+  "#1DB954",
+  "#FF6F61",
+  "#f9c74f"
+  
+)
+
+
+# Outer Latin Square: Determines outer block position
+outer_latin_square <- data.frame(
+              season = c(1, 1, 2, 2),
+              greenhouse = c("A", "B", "A", "B"),
+              outer_block = c(1, 2, 3, 4)
+)
+
+# Assigning heat and light levels balanced
+create_nested_ls <- function(block_id) {
+  
+  # 4 side-variety combos
+  side_var_combos <- expand.grid(
+    side = c("n", "s"), 
+    variety = c("R", "F")
+  )
+
+  design <- data.frame()
+  
+  for (i in 1:nrow(side_var_combos)) {
+    heat_order <- sample(1:4)
+    light_order <- sample(1:4)
+    combo_design <- data.frame(
+      side = rep(side_var_combos$side[i], 4),
+      variety = rep(side_var_combos$variety[i], 4),
+      heat = heat_order,
+      light = light_order
+    )
+    
+    design <- rbind(design, combo_design)
+  }
+  
+  return(design)
+}
+
+# Generating the design for all 4 outer blocks
+all_designs <- list()
+
+for (i in 1:nrow(outer_latin_square)){
+  block_design <- create_nested_ls()
+  block_design$season <- outer_latin_square$season[i]
+  block_design$greenhouse <- outer_latin_square$greenhouse[i]
+  block_design$outer_block <- outer_latin_square$outer_block[i]
+  all_designs[[i]] <- block_design
+}
+
+# Combining blocks
+final_design <- do.call(rbind, all_designs)
+final_design$plot <- 1:nrow(final_design)
+
+design_csv <- final_design[c("season", 
+                             "greenhouse", "light", 
+                             "heat", "variety", "side", "plot")]
+
+
+cat("--- Design Validation Check ---\n\n")
+
+# unique combinations of s and gh
+all_main_blocks <- unique(design_csv[, c("season", "greenhouse")])
+
+for (i in 1:nrow(all_main_blocks)) {
+  
+  s <- all_main_blocks$season[i]
+  gh <- all_main_blocks$greenhouse[i]
+  
+  cat(paste("========================================\n"))
+  cat(paste("    Checking Season:", s, "| Greenhouse:", gh, " \n"))
+  cat(paste("========================================\n"))
+  
+
+  current_block_data <- subset(design_csv, season == s & greenhouse == gh)
+  
+  side_variety_combos <- sort(unique(
+    paste(current_block_data$side, 
+          current_block_data$variety)))
+  
+
+  for (sv in side_variety_combos) {
+    cat("\n  Sub-block (Side / Variety):", sv, "\n")
+    subset_data <- current_block_data[
+      paste(current_block_data$side,
+      current_block_data$variety) == sv, ]
+    cat("    > Heat levels present: ", paste(
+      sort(unique(subset_data$heat)), collapse=", "), "\n")
+    cat("    > Light levels present:", paste(
+      sort(unique(subset_data$light)), collapse=", "), "\n")
+  }
+  cat("\n")
+}
+
+cat("--- Validation Complete ---\n")
+
+# Write file
+write.csv(design_csv, "design.csv", row.names = FALSE, quote = FALSE)
+
+
+# Obtaining observations:
+design <- read.csv("design.csv")
+mydata <- get.observations(design)
+
+mydata
+
+
+# Convert variables to factors ---------------------------------------------
+dat <- na.omit(mydata)
+dat$season     <- factor(dat$season)
+dat$greenhouse <- factor(dat$greenhouse)
+dat$heat       <- factor(dat$heat)
+dat$light      <- factor(dat$light)
+dat$variety    <- factor(dat$variety)
+dat$side       <- factor(dat$side)
+dat$block      <- interaction(dat$season, dat$greenhouse, drop = TRUE)
+
+# Fit model ------------------------------------------------------------------
+fit <- lm(obs ~ block + side + heat*light + 
+            variety + heat:variety + light:variety, data = dat)
+
+# Model summary --------------------------------------------------------------
+summary(fit)
+
+coef_table <- summary(fit)$coefficients
+kable(coef_table, caption = "Model Coefficients Summary", digits = 3)
+
+# Type II ANOVA
+anova_results <- Anova(fit, type = 2)
+kable(anova_results, caption = "Type II ANOVA Results")
+
+
+par(mfrow = c(2, 2), mar = c(4, 4, 2, 1))
+plot(fit, which = 1, col = col_palette[1])  # Residuals vs Fitted
+plot(fit, which = 2, col = col_palette[1])  # Normal Q–Q
+plot(fit, which = 3, col = col_palette[1])  # Scale–Location
+plot(fit, which = 5, col = col_palette[1])  # Residuals vs Leverage
+par(mfrow = c(1, 1))
+
+
+# ================================================================
+#  Mean plots WITHOUT CIs
+# ================================================================
+
+# Ensure factors are correctly coded
+
+dat <- dat %>%
+  mutate(
+    heat    = factor(heat),
+    light   = factor(light),
+    variety = factor(variety)
+  )
+
+# Summarise means
+
+sumdat <- dat %>%
+  group_by(light, heat, variety) %>%
+  summarise(
+    mean = mean(obs),
+    .groups = "drop"
+  )
+
+
+# Heat × Light interaction plot
+
+with(dat, interaction.plot(
+
+  x.factor = heat,              # X-axis
+
+  trace.factor = light,         # Lines
+
+  response = obs,
+
+  fun = mean,
+
+  type = "b",
+
+  col = c("black","red","blue","darkgreen"),
+
+  pch = 16:19,
+
+  xlab = "Heat Level",
+
+  ylab = "Mean Quality",
+
+  trace.label = "Light Level",
+
+  main = "Interaction: Heat × Light"
+
+))
+
+
+# Heat × Variety interaction plot
+
+with(dat, interaction.plot(
+
+  x.factor = heat,
+
+  trace.factor = variety,
+
+  response = obs,
+
+  fun = mean,
+
+  type = "b",
+
+  col = c("salmon","darkcyan"),
+
+  pch = 16:17,
+
+  xlab = "Heat Level",
+
+  ylab = "Mean Quality",
+
+  trace.label = "Variety",
+
+  main = "Interaction: Heat × Variety"
+
+))
+
+
+# Light × Variety interaction plot
+
+with(dat, interaction.plot(
+
+  x.factor = light,
+
+  trace.factor = variety,
+
+  response = obs,
+
+  fun = mean,
+
+  type = "b",
+
+  col = c("orange","orchid"),
+
+  pch = 16:17,
+
+  xlab = "Light Level",
+
+  ylab = "Mean Quality",
+
+  trace.label = "Variety",
+
+  main = "Interaction: Light × Variety"
+
+))
+
+
+#Answer the farmers questions explicitly
+
+# =======================
+# Section 6 + 7: Code
+# =======================
+install.packages("multcomp")
+# Drop missing rows (optional but useful for model fitting)
+dat_complete <- na.omit(mydata)
+
+# Create 'block' as interaction of season × greenhouse
+dat_complete$block <- interaction(dat_complete$season, 
+                                  dat_complete$greenhouse, sep = ".")
+
+# Convert all relevant variables to factors
+dat_complete$season   <- factor(dat_complete$season)
+dat_complete$greenhouse <- factor(dat_complete$greenhouse)
+dat_complete$block    <- factor(dat_complete$block)
+dat_complete$heat     <- factor(dat_complete$heat)
+dat_complete$light    <- factor(dat_complete$light)
+dat_complete$variety  <- factor(dat_complete$variety)
+dat_complete$side     <- factor(dat_complete$side)
+
+# ======================================================
+# Step 2: Fit model (block as Season × Greenhouse)
+# ======================================================
+
+fit <- lm(obs ~ block + side + heat*light + 
+            variety + heat:variety + light:variety, data = dat_complete)
+
+# 1) Which heat & light give the best quality?
+# --------------------------------------------
+emm_hl <- emmeans(fit, ~ heat * light)   # EMMs for Heat x Light
+emm_hl_sum <- summary(emm_hl)            # table with mean, SE, 95% CI
+emm_hl_pairs <- pairs(emm_hl, adjust = "tukey")  
+# Tukey-adjusted pairwise tests
+
+emm_hl_sum
+emm_hl_pairs
+
+# 2) Do settings depend on variety? (check interactions with variety)
+# -------------------------------------------------------------------
+#Anova(fit, type = 2)  
+# look at heat:variety, light:variety, and heat:light:variety rows
+
+# 3) Does quality depend on variety? (main effect)
+# -----------------------------------------------
+emm_var <- emmeans(fit, ~ variety)
+emm_var_sum <- summary(emm_var)
+emm_var_sum
+
+# 4) How big are the differences? (effect size with CI)
+# -----------------------------------------------------
+var_contr <- contrast(emm_var, "pairwise", adjust = "tukey")
+var_contr
+
+# 5) Build a small decision table for cost-aware recommendation (Section 7)
+# ------------------------------------------------------------------------
+# Rank Heat x Light means, compute difference from best (Δ)
+
+# Create clean data frame 
+decision_df <- as.data.frame(emm_hl_sum)
+
+# Remove problematic rows manually
+decision_df <- decision_df[!is.na(decision_df$emmean) 
+                           & !is.na(decision_df$SE), ]
+
+decision_tbl <- decision_df |>
+  mutate(
+    heat = as.numeric(as.character(heat)),
+    light = as.numeric(as.character(light)),
+    mean = emmean,
+    lower = lower.CL,
+    upper = upper.CL
+  ) |>
+  arrange(desc(mean)) |>
+  mutate(
+    best_mean = first(mean),
+    delta_vs_best = mean - best_mean
+  ) |>
+  dplyr::select(heat, light, mean, lower, upper, delta_vs_best)
+
+decision_tbl
+
+# Find cost-effective alternatives
+near_optimal <- decision_tbl |>
+  filter(delta_vs_best >= -3.0) |>
+  mutate(energy_cost = heat + light) |>
+  arrange(energy_cost)
+
+near_optimal
+
+library(multcompView)
+
+cld_hl <- cld(emm_hl, adjust = "tukey", Letters = letters)
+kable(cld_hl, 
+      caption = "CLD for Heat × Light Interactions", 
+      digits = 2)
+plot(emm_hl, comparisons = TRUE)
 
 
 ```
