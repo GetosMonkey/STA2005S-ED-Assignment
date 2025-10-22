@@ -255,7 +255,7 @@ write.csv(design_csv, "design.csv", row.names = FALSE, quote = FALSE)
 
 ```
 
-```{r}
+```{r, include=FALSE}
 
 # Obtaining observations:
 design <- read.csv("design.csv")
@@ -270,7 +270,7 @@ mydata
 
 ### Fitting the models and checking assumptions:
 
-```{r , include=FALSE}
+```{r, include=FALSE}
 
 # Convert variables to factors ---------------------------------------------
 dat <- na.omit(mydata)
@@ -287,6 +287,11 @@ fit <- lm(obs ~ block + side + heat*light + variety + heat:variety + light:varie
 
 # Model summary --------------------------------------------------------------
 summary(fit)
+```
+
+```{r}
+coef_table <- summary(fit)$coefficients
+kable(coef_table, caption = "Model Coefficients Summary", digits = 3)
 ```
 
 ### Model Interpretation:
@@ -323,7 +328,7 @@ kable(anova_results, caption = "Type II ANOVA Results")
 
 ```
 
-The ANOVA results showed highly significant main effects of heat, light, and side, as well as a significant interaction between heat and variety. These effects indicate that increasing temperature and light intensity both improved outcomes, but the response to heat differed slightly between varieties. The blocking factors (Season × Greenhouse) also explained a significant portion of variation, confirming that the blocking was effective in controlling background differences.
+The ANOVA results showed highly significant main effects of heat, light, and side, but insignificant interactions between heat and variety as well as between light and variety (p>0.05). These effects indicate that increasing temperature and light intensity both improved outcomes. The blocking factors (Season × Greenhouse) also explained a significant portion of variation (p = 0.003 < 0.05), confirming that the blocking was effective in controlling background differences.
 
 Overall, the model captured the major treatment effects and their interactions well, explaining approximately 96% of the total variation (R² = 0.96) in observed responses.
 
@@ -511,7 +516,7 @@ $$
 
 , runs Type-II ANOVA, extracts estimated marginal means with the emmeans package, answers the four farmer questions, and builds a cost-aware decision table.
 
-```{r}
+```{r, include=FALSE}
 
 #Answer the farmers questions explicitly
 
@@ -593,7 +598,7 @@ decision_tbl
 
 # Find cost-effective alternatives
 near_optimal <- decision_tbl |>
-  filter(delta_vs_best >= -2.0) |>
+  filter(delta_vs_best >= -3.0) |>
   mutate(energy_cost = heat + light) |>
   arrange(energy_cost)
 
@@ -603,7 +608,7 @@ near_optimal
 
 Our initial model included side nested within block (block:side) to account for positional effects. However, this caused over-parametrisation and non-estimable marginal means due to missing values and limited replication.
 
-We simplified the model by including side as a main effect. This preserves interpretability and allows stable estimates for heat, light, and variety.
+We simplified the model by treating side as a main effect. This avoids the over-parameterization of prior models and yields stable, interpretable estimates for heat, light, and variety. This approach is justified as it appropriately controls for side as a known nuisance variable.
 
 ### 🔎 Q1 — Which Heat × Light is best?
 
@@ -648,9 +653,19 @@ Crucially, the side main effect was also highly significant (F = 62.8, p < 0.000
 
 In contrast, the main effect of variety (p = 0.91) and the heat:light interaction (p = 0.81) were both non-significant. Overall, light intensity was the dominant factor, followed by heat and the greenhouse side.
 
+### Compact Letter Display: 
+
 ```{r}
+library(multcompView)
+
+cld_hl <- cld(emm_hl, adjust = "tukey", Letters = letters)
+kable(cld_hl, 
+      caption = "CLD for Heat × Light Interactions", 
+      digits = 2)
+plot(emm_hl, comparisons = TRUE)
 
 ```
+This display clearly shows that the top two combinations, (Heat 3, Light 4) and (Heat 4, Light 4), both share the letter 'g'. This confirms our earlier finding that while (H3, L4) has the highest mean, it is not statistically superior to (H4, L4).
 
 ---
 
