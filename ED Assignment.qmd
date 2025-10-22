@@ -65,6 +65,7 @@ library(EDproject)
 library(car)
 library(knitr)
 library(emmeans)
+library(multcomp)
 
 # Set global format options
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, 
@@ -308,11 +309,11 @@ $$
 $$
 
 ```{r}
-# Type I ANOVA
-# anova(fit)
 
 # Type II ANOVA
-Anova(fit, type = 2)
+anova_results <- Anova(fit, type = 2)
+kable(anova_results, caption = "Type II ANOVA Results")
+
 ```
 
 The Type II ANOVA (Table above) tests each factor after accounting for the others, making it appropriate for our slightly unbalanced design. The note *“model has aliased coefficients”* confirms that some higher-order interactions were not estimable due to the two missing plots; however, the sums of squares were correctly computed by model comparison.
@@ -508,8 +509,6 @@ fit <- lm(obs ~ block + side:block + heat*light*variety, data = dat_complete)
 
 # 1) Which heat & light give the best quality?
 # --------------------------------------------
-# install.packages("emmeans")  # <- run once if not installed
-library(emmeans)
 emm_hl <- emmeans(fit, ~ heat * light)   # EMMs for Heat x Light
 emm_hl_sum <- summary(emm_hl)            # table with mean, SE, 95% CI
 emm_hl_pairs <- pairs(emm_hl, adjust = "tukey")  # Tukey-adjusted pairwise tests
@@ -519,8 +518,6 @@ emm_hl_pairs
 
 # 2) Do settings depend on variety? (check interactions with variety)
 # -------------------------------------------------------------------
-# install.packages("car")  # <- once if needed
-library(car)
 #Anova(fit, type = 2)  # look at heat:variety, light:variety, and heat:light:variety rows
 
 # 3) Does quality depend on variety? (main effect)
@@ -537,27 +534,36 @@ var_contr
 # 5) Build a small decision table for cost-aware recommendation (Section 7)
 # ------------------------------------------------------------------------
 # Rank Heat x Light means, compute difference from best (Δ)
-library(dplyr)
-decision_tbl <- emm_hl_sum |>
-  as.data.frame() |>
+
+# Create clean data frame 
+decision_df <- as.data.frame(emm_hl_sum)
+
+# Remove problematic rows manually
+decision_df <- decision_df[!is.na(decision_df$emmean) & !is.na(decision_df$SE), ]
+
+decision_tbl <- decision_df |>
   mutate(
-    heat  = as.integer(as.character(heat)),
-    light = as.integer(as.character(light))
+    heat = as.numeric(as.character(heat)),
+    light = as.numeric(as.character(light)),
+    mean = emmean,
+    lower = lower.CL,
+    upper = upper.CL
   ) |>
-  rename(mean = emmean, lower = lower.CL, upper = upper.CL) |>
   arrange(desc(mean)) |>
   mutate(
     best_mean = first(mean),
-    delta_vs_best = mean - best_mean  # negative = lower than best
+    delta_vs_best = mean - best_mean
   ) |>
-  select(heat, light, mean, lower, upper, delta_vs_best)
+  dplyr::select(heat, light, mean, lower, upper, delta_vs_best)
 
 decision_tbl
 
-# Optional: pick a near-optimal, cheaper setting (within 2 unit of best)
+# Find cost-effective alternatives
 near_optimal <- decision_tbl |>
   filter(delta_vs_best >= -2.0) |>
-  arrange(heat + light)  # crude proxy for energy cost
+  mutate(energy_cost = heat + light) |>
+  arrange(energy_cost)
+
 near_optimal
 
 ```
@@ -624,6 +630,9 @@ Although the treatment-by-variety interactions were not significant, the main ef
 
 The main treatment effects of heat and light were highly significant (F = 40.37 and 172.91, p \< 0.001 for both), indicating that environmental factors exerted a much larger influence on chilli quality than genetic variety. Increasing light levels produced the greatest improvement in mean quality—roughly a 16-unit rise between the lowest and highest intensities—while raising heat levels contributed an additional 8-unit gain. Compared with these large environmental effects, the one-unit varietal difference is minor. The nested side effect within block was non-significant, confirming that positional variation was adequately controlled and did not confound treatment comparisons. Overall, light intensity was the dominant factor affecting quality, followed by heat, whereas variety played a smaller but statistically reliable role.
 
+```{r}
+
+```
 
 ---
 
