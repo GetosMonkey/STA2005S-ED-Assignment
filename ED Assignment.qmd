@@ -91,7 +91,7 @@ col_palette = c (
 
 ## Simulating data:
 
-We created the design matrix in accordance to a **Nested Latin Square design**, testing all 16 heat $\times$ light combinations in each block where each block represented a greenhouse-season combination and is created from a  2$\times$2 latin square design with greenhouse ( A, B) as columns and season (1, 2) as rows. 
+We created the design matrix in accordance to a **Nested Latin Square design**, testing all 16 heat $\times$ light combinations in each block where each block represented a greenhouse-season combination and is created from a  2$\times$2 Latin square design with greenhouse ( A, B) as columns and season (1, 2) as rows. 
 
 **treatment factors:**
 
@@ -299,7 +299,7 @@ kable(coef_table, caption = "Model Coefficients Summary", digits = 3)
 
 We fitted a linear model to analyze the experimental design, using **Season × Greenhouse** (`block`) to control for background variation. The model tested the main effects of **heat**, **light**, **variety**, and **side**, as well as all two-way interactions involving the primary treatment factors (`heat:light`, `heat:variety`, `light:variety`).
 
-Initially, a more complex model was considered, which included `side` nested within `block` (`side:block`) and a full three-way interaction (`heat:light:variety`). However, this version resulted in over-parameterization and non-estimable coefficients, likely due to the two missing data points. Therefore, this simplified and practical model was adopted to ensure all key treatment effects could be robustly estimated, in line with our project guidelines.
+Initially, a more complex model was tested, which included the full three-way interaction (heat:light:variety). This interaction was found to be non-significant and was subsequently removed to simplify the analysis. The model was also simplified by treating side as a main effect rather than nesting it within block (block:side). While the side effect was found to be highly significant (p < 0.001) and thus an important nuisance factor to control for, the nested version (block:side) caused over-parameterization due to the missing data. The final, simplified model (obs ~ block + side + heat*light + variety + heat:variety + light:variety) was adopted as it robustly controls for all key factors and allows for stable estimation of the treatment effects.
 
 Because two observations were missing, the design became slightly unbalanced. To address this, we used **Type II ANOVA** (`car::Anova()`) for valid, order-independent F-tests of significance. The `summary(fit)` output was used only to interpret **coefficient direction and relative magnitude**, as its p-values are not reliable in unbalanced designs.
 
@@ -633,7 +633,7 @@ Quality increases consistently and substantially with higher Light levels, which
 **Answer:**
 Yes, there is evidence for a specific interaction. While the overall Anova table shows the light:variety interaction is not significant (p = 0.432) and the general heat:variety interaction is only borderline (p = 0.0515), this masks a more important detail.
 
-The model's coefficient table (summary(fit)) reveals a highly significant heat3:varietyR interaction (p = 0.0077). This specific interaction indicates that the effect of Heat Level 3 is not consistent for both varieties. The negative coefficient suggests that Variety 'R' (Furious) responds significantly worse to Heat Level 3 compared to the baseline 'F' (Redhot) variety.
+The model's coefficient table (summary(fit)) reveals a highly significant heat3:variety R interaction (p = 0.0077). This specific interaction indicates that the effect of Heat Level 3 is not consistent for both varieties. The negative coefficient suggests that Variety 'R' (Furious) responds significantly worse to Heat Level 3 compared to the baseline 'F' (Redhot) variety.
 
 Therefore, our top recommendation (Heat 3) is primarily driven by the strong performance of 'Redhot' under that condition and may not be the optimal heat level for 'Furious'.
 
