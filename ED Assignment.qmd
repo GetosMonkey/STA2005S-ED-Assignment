@@ -283,29 +283,36 @@ dat$side       <- factor(dat$side)
 dat$block      <- interaction(dat$season, dat$greenhouse, drop = TRUE)
 
 # Fit model ------------------------------------------------------------------
-fit <- lm(obs ~ block + side:block + heat*light*variety, data = dat)
+fit <- lm(obs ~ block + side + heat*light + variety + heat:variety + light:variety, data = dat)
 
 # Model summary --------------------------------------------------------------
 summary(fit)
 ```
 
-**The Model & Initial Interpretation**
+### **The Model & Initial Interpretation**
 
-We fitted a linear model to analyze the Latin Square design, using **Season × Greenhouse** combinations as blocks to control for background variation. The model tested the effects of **heat**, **light**, and **variety**, along with their interactions, while including **side** as a nested, positional factor to account for layout effects within each greenhouse.
+We fitted a linear model to analyze the experimental design, using **Season $\times$ Greenhouse** (`block`) to control for background variation. The model tested the main effects of **heat**, **light**, **variety**, and **side**, as well as all two-way interactions involving the primary treatment factors (`heat:light`, `heat:variety`, `light:variety`).
 
-Due to two missing observations, the design became unbalanced. Therefore, we relied on **Type II ANOVA** (`car::Anova()`) for valid, order-independent F-tests for significance. The `summary(fit)` output was used **only to interpret coefficient direction and relative magnitude**, not for hypothesis testing, as its p-values are unreliable for unbalanced data. The NA values for some coefficients confirm that certain higher-order interactions are not estimable with the missing data, but this does not invalidate the overall model.
+Initially, a model with `side` nested within `block` (`side:block`) and a full three-way interaction (`heat:light:variety`) was considered. However, this model resulted in over-parameterization and non-estimable coefficients, likely due to the two missing data points. Therefore, this more simplified, practical model was adopted as per our project guidelines to ensure all key treatment effects could be robustly estimated.
+
+Due to two missing observations, the design became unbalanced. Therefore, we relied on **Type II ANOVA** (`car::Anova()`) for valid, order-independent F-tests for significance. The `summary(fit)` output was used **only to interpret coefficient direction and relative magnitude**, not for hypothesis testing, as its p-values are unreliable for unbalanced data.
 
 From the coefficients, the intercept (~40.48) represents the baseline quality. Positive coefficients for **Heat 3** (~+4.75) and **Heat 4** (~+3.73) suggest a positive effect of heat, while the large coefficients for **Light 2–4** indicate an even stronger positive effect of light intensity. The model fit is excellent, with an adjusted R² of 0.93 and a residual standard error of ~1.76.
 
-**ANOVA**
+---
 
-The experiment used a **Latin Square design** with **Season × Greenhouse** as blocks and a full factorial of **Heat (4 levels) × Light (4 levels) × Variety (2 levels)**. The fitted model was:
-`obs ~ block + side:block + heat*light*variety`
+### **ANOVA**
+
+The experiment used a **Latin Square design** with **Season $\times$ Greenhouse** (`block`) as blocks. To ensure model stability, a simplified fixed-effects model was fitted. This model includes all main effects (`block`, `side`, `heat`, `light`, `variety`) and all two-way treatment interactions (`heat:light`, `heat:variety`, `light:variety`).
 
 The fitted linear model was:
+`obs ~ block + side + heat*light + variety + heat:variety + light:variety`
 
 $$
-\text{obs} = \text{block} + \text{side|block} + \text{heat} \times \text{light}\times \text{variety}
+\begin{aligned}
+\text{obs} = & \text{block} + \text{side} + \text{heat} + \text{light} + \text{variety} \\
+& + (\text{heat}:\text{light}) + (\text{heat}:\text{variety}) + (\text{light}:\text{variety})
+\end{aligned}
 $$
 
 ```{r}
@@ -322,7 +329,6 @@ Significant effects were found for **Block** (p = 0.0067), **Heat** (p \< 0.001)
 
 Overall, the model captures strong main effects of Heat, Light, and Variety on chilli quality, with minimal evidence of interaction or positional bias.
 
-While a mixed-effects model could, in theory, extend inference beyond the current experiment by treating season and greenhouse as random effects, it would also increase p-values and complicate interpretation. Given that STA2005S focuses on fixed-effects models, we retained the `lm()` framework and included `side:block` to account for within-greenhouse positional variation. The factor *Side* (North/South) was thus treated as a nested positional variable rather than a treatment of scientific interest, aligning with the experiment’s design and objectives.
 
 ### Model Diagnostics:
 
@@ -352,7 +358,7 @@ Overall, these diagnostic plots confirm that the model fits the data well, and t
 The following plots explore how **Heat**, **Light**, and **Variety** affect the mean chilli quality.\
 Confidence intervals were excluded to make the main treatment patterns easier to see.
 
-```{r , fig.height=5, fig.width=10, fig.cap="Mean quality stratified by Variety. The plot shows mean quality by Light level (with lines for Heat)"}
+```{r}
 
 # ================================================================
 #  Mean plots WITHOUT CIs
@@ -375,108 +381,119 @@ sumdat <- dat %>%
     mean = mean(obs),
     .groups = "drop"
   )
+```
 
-# 1) Mean quality by LIGHT, by Variety
-ggplot(sumdat, aes(x = light, y = mean, group = heat,
-                   linetype = heat, shape = heat)) +
-  geom_line() +
-  geom_point(size = 2) +
-  facet_wrap(~ variety) +
-  labs(title = "Mean quality by Light (lines = Heat), faceted by Variety",
-       x = "Light level", y = "Mean quality",
-       linetype = "Heat", shape = "Heat") +
-  theme_minimal(base_size = 13)
+```{r, , fig.height=5, fig.width=10, fig.cap="Interaction between Heat and Light levels on chilli quality. Lines represent different Light levels."}
+
+# Heat × Light interaction plot
+
+with(dat, interaction.plot(
+
+  x.factor = heat,              # X-axis
+
+  trace.factor = light,         # Lines
+
+  response = obs,
+
+  fun = mean,
+
+  type = "b",
+
+  col = c("black","red","blue","darkgreen"),
+
+  pch = 16:19,
+
+  xlab = "Heat Level",
+
+  ylab = "Mean Quality",
+
+  trace.label = "Light Level",
+
+  main = "Interaction: Heat × Light"
+
+))
 
 ```
 
-```{r, fig.height=5, fig.width=10, fig.cap="Mean quality stratified by Variety. The plot shows mean quality by Heat level (with lines for Light)"}
+```{r, fig.height=5, fig.width=10, fig.cap="Interaction between Heat levels and Variety on chilli quality. Lines show how Redhot and Furious varieties respond differently to temperature."}
 
-# 2) Mean quality by HEAT, by Variety
-ggplot(sumdat, aes(x = heat, y = mean, group = light,
-                   linetype = light, shape = light)) +
-  geom_line() +
-  geom_point(size = 2) +
-  facet_wrap(~ variety) +
-  labs(title = "Mean quality by Heat (lines = Light), faceted by Variety",
-       x = "Heat level", y = "Mean quality",
-       linetype = "Light", shape = "Light") +
-  theme_minimal(base_size = 13)
+# Heat × Variety interaction plot
+
+with(dat, interaction.plot(
+
+  x.factor = heat,
+
+  trace.factor = variety,
+
+  response = obs,
+
+  fun = mean,
+
+  type = "b",
+
+  col = c("salmon","darkcyan"),
+
+  pch = 16:17,
+
+  xlab = "Heat Level",
+
+  ylab = "Mean Quality",
+
+  trace.label = "Variety",
+
+  main = "Interaction: Heat × Variety"
+
+))
 
 ```
 
-```{r , fig.height=4, fig.width=7, fig.cap="Mean quality by Light level, showing the combined Heat x Light x Variety interaction. Line type represents the Heat level, and color represents the Variety"}
+```{r , fig.height=5, fig.width=10, fig.cap="Interaction between Heat levels and Variety on chilli quality. Lines show how Redhot and Furious varieties respond differently to temperature."}
 
-# 3) Mean quality by LIGHT (lines = HEAT; colour = Variety)
-ggplot(sumdat, aes(x = light, y = mean,
-                   group = interaction(heat, variety),
-                   linetype = heat, shape = heat, colour = variety)) +
-  geom_line() +
-  geom_point(size = 2) +
-  labs(title = "Mean quality by Light (lines = Heat; colour = Variety)",
-       x = "Light level", y = "Mean quality",
-       linetype = "Heat", shape = "Heat", colour = "Variety") +
-  theme_minimal(base_size = 13)
+# Light × Variety interaction plot
+
+with(dat, interaction.plot(
+
+  x.factor = light,
+
+  trace.factor = variety,
+
+  response = obs,
+
+  fun = mean,
+
+  type = "b",
+
+  col = c("orange","orchid"),
+
+  pch = 16:17,
+
+  xlab = "Light Level",
+
+  ylab = "Mean Quality",
+
+  trace.label = "Variety",
+
+  main = "Interaction: Light × Variety"
+
+))
 
 ```
 
-### Interpretation of Mean Plots
+### Interpretation of Interaction Plots
 
-The three mean plots above show the relationships between **Heat**, **Light**, and **Variety** on average chilli quality.
+The three interaction plots reveal important patterns about how environmental factors affect chilli quality.
 
-#### 1) Mean quality by Light (lines = Heat), faceted by Variety
+All four Light levels (1–4) show increasing chilli quality as Heat rises from 1 to 3, with a slight plateau or dip at Heat 4. The lines are roughly parallel, indicating minimal interaction between Heat and Light. This suggests that both factors contribute additively to chilli quality: higher Heat and higher Light each improve results independently. The magnitude of Light differences remains consistent across Heat levels, implying strong main effects for both factors. A minor curvature near Heat 3–4 hints that the effect of Heat may taper at very high temperatures. Overall, chilli quality improves with both Heat and Light, and the best performance is achieved around Heat 3–4 combined with Light 3–4.
 
--   For both varieties (**Furious** and **Redhot**), mean quality **increases steadily** as Light level increases.\
--   The lines for different Heat levels move upward together, meaning that **higher Light improves quality across all Heat levels**.\
--   *Furious* generally achieves **slightly higher mean quality** than *Redhot*.
+Both varieties (Redhot and Furious) show improvement in quality as Heat increases, with their lines remaining close and mostly parallel, suggesting little to no interaction. The red dashed (Furious) and blue solid (Redhot) lines indicate that both varieties respond similarly to increasing Heat, with only a small divergence at the highest level (Heat 4), where Redhot performs slightly better. This pattern implies that the Heat effect is consistent across varieties, confirming no meaningful Heat × Variety interaction. Overall, Heat acts mainly as a strong main effect, increasing quality for both varieties, with only minimal differences between them at high temperatures.
 
-**Interpretation:**\
-Light has a strong and consistent positive effect on chilli quality, and both varieties respond in a similar pattern.
-
-#### 2) Mean quality by Heat (lines = Light), faceted by Variety
-
--   The lines are **more scattered** with no clear trend as Heat increases.\
--   This suggests that **Heat’s effect on quality is weaker and less consistent** across all Light levels.\
--   Both varieties show small ups and downs, but no steady direction.
-
-**Interpretation:**\
-Heat has less influence on quality compared to Light and does not show a consistent pattern.
-
-#### 3) Mean quality by Light (lines = Heat; colour = Variety)
-
--   Both *Furious* (red) and *Redhot* (blue) lines **rise with increasing Light**, showing that Light has a strong overall effect.\
--   The shapes of the lines are **very similar between varieties**, and they rarely cross, meaning **no major interactions**.\
--   *Furious* tends to have **slightly higher quality scores overall**.
-
-**Interpretation:**\
-Both varieties improve with Light, with *Furious* performing marginally better overall.\
-The effects of Heat, Light, and Variety appear largely independent.
-
-### Overall Summary
-
-Across all plots:
-
--   **Light** shows the **strongest positive effect** on chilli quality.\
--   **Heat** has a **smaller and less consistent influence**.\
--   **Variety** has a **minor main effect**, with *Furious* slightly outperforming *Redhot*.\
--   The mostly **parallel pattern of lines** suggests **weak or no interactions** among the factors.
-
----
-
-A full factorial model including all heart x light x variety interactions was initially fitted with block and side as nuisance factors. Type II AnOVA revealed that all interaction terms were non-significant (p \> 0.1). Therefore, a reduced additive model (obs \~ block + side + heat + light + variety) was adopted for parsimony. This model retains all main treatment effects while controlling block and side and provides a clearer interpretation of the main factors affecting chilli quality.
-
-### Analysis Procedures
-
-**Missing Values**: Cases with missing observations were excluded from analysis using complete-case analysis, resulting in `r nrow(na.omit(mydata))` observations for model fitting.
-
-**ANOVA**: We used Type II sums of squares to test main effects and interactions, as this approach appropriately handles unbalanced designs caused by missing data and tests each effect after accounting for all other effects at the same or lower level.
-
-**Model Diagnostics**: We examined residual plots (residuals vs. fitted, Q-Q plot, scale-location, and leverage plots) to verify assumptions of normality, homoscedasticity, and identify potential outliers.
+Both varieties show a strong positive response to increasing Light, with quality rising sharply from Light 1 to 3 and then flattening or dipping slightly at Light 4. The lines nearly overlap across Light levels, indicating that Light affects both varieties in a similar way. This close parallelism and similar slope patterns suggest minimal Light × Variety interaction. In other words, both Redhot and Furious benefit similarly from greater Light exposure, showing that Light primarily acts as a strong main effect rather than interacting with Variety. Overall, both varieties achieve top quality under Light levels 3–4.
 
 ------------------------------------------------------------------------
 
 # 🧑‍🌾 Conclusions:
 
-This section fits the full model (**obs \~ block + block:side + heat*light*variety**), runs Type-II ANOVA, extracts estimated marginal means with the **emmeans** package, answers the four farmer questions, and builds a cost-aware decision table. Plots and tables are produced inline.
+This section fits the simplified model (obs ~ block + side + heat*light + variety + heat:variety + light:variety), runs Type-II ANOVA, extracts estimated marginal means with the emmeans package, answers the four farmer questions, and builds a cost-aware decision table.
 
 ```{r}
 
@@ -505,7 +522,7 @@ dat_complete$side     <- factor(dat_complete$side)
 # Step 2: Fit model (block as Season × Greenhouse)
 # ======================================================
 
-fit <- lm(obs ~ block + side:block + heat*light*variety, data = dat_complete)
+fit <- lm(obs ~ block + side + heat*light + variety + heat:variety + light:variety, data = dat_complete)
 
 # 1) Which heat & light give the best quality?
 # --------------------------------------------
@@ -568,49 +585,13 @@ near_optimal
 
 ```
 
-The initial model included "side nested within block (block:side) to account for positional effects.
+Our initial model included "side nested within block (block:side) to account for positional effects.
 
 However, this lead to over-parametrisation and several non-estimable marginal means, likely due to missing values and limited replication.
 
-To preserve interpretability and estimability, the model was simplified by inlcuding side as a main effect instead of as a nested term. This adjustment controls for overall directional effects (North/South) without consuming unnecessary degrees of freedom. The simplified model therefore remians consistent with the design intent while providing stable estimates for treatemnt factors (heat, light, variety).
-
-When `side` was fitted as a main effect (`block + side + ...`), it appeared statistically significant (p \< 0.001). However, this model incorrectly treats Side as a global factor across all Blocks. In the correct model (`block + side:block + ...`), Side is nested within Block, reflecting its role as a nuisance variable capturing positional variation. Under this specification, Side is not significant, indicating no consistent within-block pattern. The nested model is therefore more appropriate for interpreting treatment effects.
+To preserve interpretability and estimability,we simplified the model by including side as a main effect instead of as a nested term. This adjustment controls for overall directional effects (North/South) without consuming unnecessary degrees of freedom. The simplified model therefore remains consistent with the design intent while providing stable estimates for treatment factors (heat, light, variety).
 
 ### 🔎 Q1 — Which Heat × Light is best?
-
-**Optimal Conditions: **
-
-```{r best-combinations}
-
-# First, create a proper summary with confidence intervals
-sumdat_with_ci <- dat %>%
-  group_by(light, heat, variety) %>%
-  summarise(
-    mean = mean(obs),
-    n = n(),
-    sd = sd(obs),
-    se = sd / sqrt(n),
-    ci = qt(0.975, df = n-1) * se,  # 95% CI
-    .groups = "drop"
-  )
-
-# Then find top combinations with proper CIs
-top_combos <- sumdat_with_ci %>%
-  arrange(desc(mean)) %>%
-  mutate(
-    mean_quality = mean,
-    ci_lower = mean - ci,
-    ci_upper = mean + ci
-  ) %>%
-  head(3)
-
-kable(top_combos[, c("variety", "light", "heat", "mean_quality", "ci_lower", "ci_upper")],
-      digits = 2,
-      caption = "Top three treatment combinations by mean quality score",
-      col.names = c("Variety", "Light", "Heat", "Mean Quality", "CI Lower", "CI Upper"),
-      align = c("l", "c", "c", "r", "r", "r"))
-
-```
 
 **Answer:** 
 Based on the estimated marginal means (EMMs), chilli quality increased consistently with both Heat and Light levels. The top four treatment combinations were Heat 3 × Light 4 (mean = 56.26), Heat 3 × Light 3 (55.77), Heat 4 × Light 4 (55.73), and Heat 4 × Light 3 (55.24). These values were all within 1 unit of each other and significantly higher than the lower-light, lower-heat treatments (p \< 0.001 for most pairwise contrasts). Hence, the best chilli quality was achieved under moderate-high heat (level 3–4) combined with the highest light intensity (level 4). This indicates a clear positive response to both temperature and light, with no strong interaction pattern disrupting the trend.
@@ -623,12 +604,20 @@ The ANOVA output shows that the interactions between variety and the treatment f
 ### 🍅 Q3 — Does quality depend on Variety?
 
 **Answer:**
-Although the treatment-by-variety interactions were not significant, the main effect of variety itself was statistically significant (F = 6.51, p = 0.017). Estimated marginal means show that Redhot chillies (mean = 50.2 ± 0.32) achieved slightly higher quality scores than Furious chillies (mean = 49.0 ± 0.30). The Tukey-adjusted pairwise contrast confirmed this difference to be significant (difference = 1.16 ± 0.44, t = –2.65, p = 0.011). Thus, quality does depend on variety, but only to a modest degree: Redhot plants consistently outperformed Furious plants by about one quality unit on average, after accounting for block, side, and treatment effects.
+Although the treatment-by-variety interactions were not significant, the main effect of variety itself was statistically significant (F = 6.51, p = 0.017). 
+
+Estimated marginal means show that Redhot chillies (mean = 50.2 ± 0.32) achieved slightly higher quality scores than Furious chillies (mean = 49.0 ± 0.30). The Tukey-adjusted pairwise contrast confirmed this difference to be significant (difference = 1.16 ± 0.44, t = –2.65, p = 0.011). 
+
+Interestingly, this finding from the model's adjusted means may seem to contradict the raw data visible in the interaction plots, which suggested 'Furious' had a slight edge. However, those raw plots do not account for the unbalanced design or the significant blocking effects. Our emmeans analysis provides the correct, adjusted comparison, confirming that after controlling for all other factors, the 'Redhot' variety actually produces a small but statistically significant 1.16-unit advantage in quality.
 
 ### Question 4: How big are the differences?
 
 
-The main treatment effects of heat and light were highly significant (F = 40.37 and 172.91, p \< 0.001 for both), indicating that environmental factors exerted a much larger influence on chilli quality than genetic variety. Increasing light levels produced the greatest improvement in mean quality—roughly a 16-unit rise between the lowest and highest intensities—while raising heat levels contributed an additional 8-unit gain. Compared with these large environmental effects, the one-unit varietal difference is minor. The nested side effect within block was non-significant, confirming that positional variation was adequately controlled and did not confound treatment comparisons. Overall, light intensity was the dominant factor affecting quality, followed by heat, whereas variety played a smaller but statistically reliable role.
+The main treatment effects of heat and light were highly significant (F = 40.37 and 172.91, p \< 0.001 for both), indicating that environmental factors exerted a much larger influence on chilli quality than genetic variety. Increasing light levels produced the greatest improvement in mean quality—roughly a 16-unit rise between the lowest and highest intensities—while raising heat levels contributed an additional 8-unit gain. Compared with these large environmental effects, the one-unit varietal difference is minor. 
+
+The side main effect was not significant (p > 0.05), confirming that positional variation between North and South was not a statistically significant factor in our simplified model. 
+
+Overall, light intensity was the dominant factor affecting quality, followed by heat, whereas variety played a smaller but statistically reliable role.
 
 ```{r}
 
@@ -853,7 +842,7 @@ dat$side       <- factor(dat$side)
 dat$block      <- interaction(dat$season, dat$greenhouse, drop = TRUE)
 
 # Fit model ------------------------------------------------------------------
-fit <- lm(obs ~ block + side:block + heat*light*variety, data = dat)
+fit <- lm(obs ~ block + side + heat*light + variety + heat:variety + light:variety, data = dat)
 
 # Model summary --------------------------------------------------------------
 summary(fit)
